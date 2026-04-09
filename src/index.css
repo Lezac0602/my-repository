@@ -1,0 +1,87 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Source+Serif+4:wght@600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-canvas: #f6f2ef;
+  --color-panel: rgba(255, 255, 255, 0.84);
+  --color-panel-muted: rgba(250, 246, 244, 0.88);
+  --color-foreground: #1f2937;
+  --color-muted: #667085;
+  --color-border: rgba(148, 163, 184, 0.22);
+  --color-primary: #b31b1b;
+  --color-primary-soft: rgba(179, 27, 27, 0.1);
+  --color-success: #0f766e;
+  --color-warning: #b45309;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply min-h-screen bg-canvas font-sans text-foreground antialiased;
+    background-image:
+      radial-gradient(circle at top left, rgba(179, 27, 27, 0.12), transparent 30%),
+      radial-gradient(circle at top right, rgba(15, 118, 110, 0.08), transparent 26%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(246, 242, 239, 0.96));
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    @apply focus:outline-none;
+  }
+
+  ::selection {
+    background: rgba(179, 27, 27, 0.18);
+    color: #111827;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgba(148, 163, 184, 0.08);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.26);
+    border-radius: 9999px;
+  }
+
+  mark {
+    background: rgba(179, 27, 27, 0.14);
+    color: inherit;
+    border-radius: 0.35rem;
+    padding: 0 0.2rem;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply border border-white/60 bg-panel backdrop-blur-xl shadow-panel;
+  }
+
+  .muted-panel {
+    @apply border border-white/60 bg-panelMuted backdrop-blur-xl;
+  }
+
+  .section-title {
+    @apply text-sm font-semibold uppercase tracking-[0.16em] text-slate-500;
+  }
+
+  .body-copy {
+    @apply text-sm leading-6 text-slate-600;
+  }
+}
