@@ -13,7 +13,7 @@ import {
 } from "./data/mockRag";
 import { requestHandbookAnswer, getHandbookApiBaseUrl, isHandbookApiConfigured } from "./lib/handbook-api";
 import { formatClockTime } from "./lib/utils";
-import { AnswerMode, ChatMessage, HandbookApiResponse, HandbookChatTurn, NavItem, SourceLink } from "./types";
+import { AnswerMode, ChatMessage, HandbookApiResponse, HandbookChatTurn, NavItem, RecentConversation, SourceLink } from "./types";
 
 function App() {
   const recentStorageKey = "campus-live-recent-questions";
@@ -26,7 +26,7 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [recentQuestions, setRecentQuestions] = useState<string[]>(() => {
+  const [recentConversations, setRecentConversations] = useState<RecentConversation[]>(() => {
     if (typeof window === "undefined") {
       return [];
     }
@@ -38,7 +38,19 @@ function App() {
 
     try {
       const parsed = JSON.parse(stored);
-      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+      return Array.isArray(parsed)
+        ? parsed.filter((item): item is RecentConversation => {
+            return (
+              Boolean(item) &&
+              typeof item === "object" &&
+              typeof item.id === "string" &&
+              typeof item.title === "string" &&
+              typeof item.question === "string" &&
+              typeof item.timestamp === "string" &&
+              Array.isArray(item.messages)
+            );
+          })
+        : [];
     } catch {
       return [];
     }
@@ -68,6 +80,7 @@ function App() {
     sources: SourceLink[];
   } | null>(null);
   const [threadResponseId, setThreadResponseId] = useState<string>();
+  const [currentConversationId, setCurrentConversationId] = useState<string>();
   const [chatSessionCount, setChatSessionCount] = useState(1);
 
   const apiConfigured = isHandbookApiConfigured();
@@ -92,9 +105,9 @@ function App() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(recentStorageKey, JSON.stringify(recentQuestions));
+      window.localStorage.setItem(recentStorageKey, JSON.stringify(recentConversations));
     }
-  }, [recentQuestions]);
+  }, [recentConversations]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -109,8 +122,38 @@ function App() {
     }));
   }
 
-  function upsertRecentQuestion(question: string) {
-    setRecentQuestions((current) => [question, ...current.filter((item) => item !== question)].slice(0, 6));
+  function buildConversationTitle(question: string) {
+    const normalized = question.replace(/\s+/g, " ").trim();
+    return normalized.length > 54 ? `${normalized.slice(0, 51)}...` : normalized;
+  }
+
+  function upsertRecentConversation(conversation: RecentConversation) {
+    setRecentConversations((current) => [conversation, ...current.filter((item) => item.id !== conversation.id)].slice(0, 8));
+  }
+
+  function saveConversationSnapshot(nextMessages: ChatMessage[], nextResponseId?: string, fallbackQuestion?: string) {
+    const latestQuestion =
+      [...nextMessages].reverse().find((message) => message.role === "user")?.content.trim() || fallbackQuestion?.trim() || "";
+
+    if (!latestQuestion || !nextMessages.length) {
+      return;
+    }
+
+    const conversationId = currentConversationId ?? `conversation-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const snapshot: RecentConversation = {
+      id: conversationId,
+      title: buildConversationTitle(latestQuestion),
+      question: latestQuestion,
+      timestamp: formatClockTime(new Date()),
+      messages: nextMessages,
+      previousResponseId: nextResponseId,
+    };
+
+    if (!currentConversationId) {
+      setCurrentConversationId(conversationId);
+    }
+
+    upsertRecentConversation(snapshot);
   }
 
   function upsertSavedQuery(question: string) {
@@ -154,20 +197,25 @@ function App() {
     setActiveNav("Chat");
     setInput(trimmed);
     setMessages((current) => [...current, userMessage]);
-    upsertRecentQuestion(trimmed);
     setIsGenerating(true);
 
-    const response = await requestHandbookAnswer({
-      question: trimmed,
-      history,
-      mode: answerMode,
-      previousResponseId: threadResponseId,
-    });
+    try {
+      const response = await requestHandbookAnswer({
+        question: trimmed,
+        history,
+        mode: answerMode,
+        previousResponseId: threadResponseId,
+      });
 
-    setMessages((current) => [...current, createAssistantMessage(response)]);
-    setThreadResponseId(response.previousResponseId);
-    setIsGenerating(false);
-    setInput("");
+      const assistantMessage = createAssistantMessage(response);
+      const nextMessages = [...messages, userMessage, assistantMessage];
+      setMessages(nextMessages);
+      setThreadResponseId(response.previousResponseId);
+      saveConversationSnapshot(nextMessages, response.previousResponseId, trimmed);
+      setInput("");
+    } finally {
+      setIsGenerating(false);
+    }
   }
 
   async function regenerateLatestAnswer(messageId: string) {
@@ -198,17 +246,22 @@ function App() {
     const history = buildHistory(messages.slice(0, userIndex));
     setIsGenerating(true);
 
-    const response = await requestHandbookAnswer({
-      question,
-      history,
-      mode: answerMode,
-    });
+    try {
+      const response = await requestHandbookAnswer({
+        question,
+        history,
+        mode: answerMode,
+      });
 
-    setMessages((current) =>
-      current.map((message) => (message.id === messageId ? { ...createAssistantMessage(response), id: messageId } : message)),
-    );
-    setThreadResponseId(response.previousResponseId);
-    setIsGenerating(false);
+      const updatedMessages = messages.map((message) =>
+        message.id === messageId ? { ...createAssistantMessage(response), id: messageId } : message,
+      );
+      setMessages(updatedMessages);
+      setThreadResponseId(response.previousResponseId);
+      saveConversationSnapshot(updatedMessages, response.previousResponseId, question);
+    } finally {
+      setIsGenerating(false);
+    }
   }
 
   async function handleCopy(messageId: string) {
@@ -262,6 +315,7 @@ function App() {
     setMessages([]);
     setInput("");
     setThreadResponseId(undefined);
+    setCurrentConversationId(undefined);
     setSelectedSources(null);
     setSidebarOpen(false);
     setChatSessionCount((current) => current + 1);
@@ -273,10 +327,19 @@ function App() {
     void runQuery(prompt);
   }
 
-  function handleRecentQuestionSelect(question: string) {
+  function handleRecentQuestionSelect(conversationId: string) {
+    const conversation = recentConversations.find((item) => item.id === conversationId);
+    if (!conversation) {
+      return;
+    }
+
     setActiveNav("Chat");
-    setInput(question);
-    void runQuery(question);
+    setMessages(conversation.messages);
+    setInput("");
+    setThreadResponseId(conversation.previousResponseId);
+    setCurrentConversationId(conversation.id);
+    setSelectedSources(null);
+    setSidebarOpen(false);
   }
 
   function handleSavedQuerySelect(question: string) {
@@ -302,7 +365,7 @@ function App() {
         <aside className="hidden lg:block">
           <Sidebar
             activeNav={activeNav}
-            recentQuestions={recentQuestions}
+            recentConversations={recentConversations}
             savedQueries={savedQueries}
             suggestedQuestions={suggestedQuestions}
             apiConfigured={apiConfigured}
@@ -318,7 +381,7 @@ function App() {
           <ChatPanel
             activeNav={activeNav}
             messages={messages}
-            recentQuestions={recentQuestions}
+            recentConversations={recentConversations}
             savedQueries={savedQueries}
             input={input}
             isGenerating={isGenerating}
@@ -359,7 +422,7 @@ function App() {
           </div>
           <Sidebar
             activeNav={activeNav}
-            recentQuestions={recentQuestions}
+            recentConversations={recentConversations}
             savedQueries={savedQueries}
             suggestedQuestions={suggestedQuestions}
             apiConfigured={apiConfigured}

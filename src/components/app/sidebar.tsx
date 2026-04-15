@@ -12,7 +12,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { handbookRootUrl, mockStudent, navigationItems } from "../../data/mockRag";
-import { NavItem } from "../../types";
+import { NavItem, RecentConversation } from "../../types";
 import { cn } from "../../lib/utils";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -20,13 +20,13 @@ import { Card } from "../ui/card";
 
 interface SidebarProps {
   activeNav: NavItem;
-  recentQuestions: string[];
+  recentConversations: RecentConversation[];
   savedQueries: string[];
   suggestedQuestions: string[];
   apiConfigured: boolean;
   onNavChange: (item: NavItem) => void;
   onSuggestedQuestion: (question: string) => void;
-  onRecentQuestionSelect: (question: string) => void;
+  onRecentQuestionSelect: (conversationId: string) => void;
   onSavedQuerySelect: (question: string) => void;
   onNewChat: () => void;
 }
@@ -40,7 +40,7 @@ const navIcons = {
 
 export function Sidebar({
   activeNav,
-  recentQuestions,
+  recentConversations,
   savedQueries,
   suggestedQuestions,
   apiConfigured,
@@ -136,15 +136,31 @@ export function Sidebar({
           <h2 className="section-title">Recent Questions</h2>
         </div>
         <div className="space-y-2">
-          {(recentQuestions.length ? recentQuestions : ["No live questions yet. Start a new chat to build a recent list."]).map((question) => (
+          {(recentConversations.length
+            ? recentConversations
+            : [
+                {
+                  id: "empty",
+                  title: "No live questions yet",
+                  question: "Start a new chat to build a recent list.",
+                  timestamp: "",
+                  messages: [],
+                },
+              ]).map((conversation) => (
             <button
-              key={question}
+              key={conversation.id}
               type="button"
-              onClick={() => recentQuestions.length && onRecentQuestionSelect(question)}
+              onClick={() => recentConversations.length && onRecentQuestionSelect(conversation.id)}
               className="w-full rounded-2xl border border-transparent bg-white/75 px-4 py-3 text-left transition hover:border-slate-200 hover:bg-white disabled:cursor-default"
-              disabled={!recentQuestions.length}
+              disabled={!recentConversations.length}
             >
-              <div className="text-sm font-semibold text-slate-700">{question}</div>
+              <div className="text-sm font-semibold text-slate-700">{conversation.title}</div>
+              <div className="mt-1 text-xs leading-6 text-slate-500">{conversation.question}</div>
+              {conversation.timestamp ? (
+                <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                  {conversation.timestamp}
+                </div>
+              ) : null}
             </button>
           ))}
         </div>

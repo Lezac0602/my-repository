@@ -1,8 +1,9 @@
-import { FormEvent, KeyboardEvent, useEffect, useRef } from "react";
+import { FormEvent, KeyboardEvent, ReactNode, useEffect, useRef } from "react";
 import {
   BookmarkPlus,
   Copy,
   FileStack,
+  LoaderCircle,
   PanelLeftOpen,
   Plus,
   RefreshCw,
@@ -12,7 +13,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { exampleChips, handbookRootUrl, quickActions } from "../../data/mockRag";
-import { AnswerMode, ChatMessage, NavItem } from "../../types";
+import { AnswerMode, ChatMessage, NavItem, RecentConversation } from "../../types";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
@@ -25,7 +26,7 @@ import { TogglePill } from "../ui/toggle-pill";
 interface ChatPanelProps {
   activeNav: NavItem;
   messages: ChatMessage[];
-  recentQuestions: string[];
+  recentConversations: RecentConversation[];
   savedQueries: string[];
   input: string;
   isGenerating: boolean;
@@ -40,7 +41,7 @@ interface ChatPanelProps {
   onInputChange: (value: string) => void;
   onSubmit: () => void;
   onPromptSelect: (question: string) => void;
-  onRecentQuestionSelect: (question: string) => void;
+  onRecentQuestionSelect: (conversationId: string) => void;
   onSavedQuerySelect: (question: string) => void;
   onSaveCurrentQuery: () => void;
   onRegenerate: (messageId: string) => void;
@@ -55,7 +56,7 @@ interface ChatPanelProps {
 export function ChatPanel({
   activeNav,
   messages,
-  recentQuestions,
+  recentConversations,
   savedQueries,
   input,
   isGenerating,
@@ -102,34 +103,19 @@ export function ChatPanel({
     }
   }
 
-  function renderLibraryView(title: string, subtitle: string, items: string[], onSelect: (value: string) => void, emptyText: string, actionLabel: string) {
+  function renderLibraryView(
+    title: string,
+    subtitle: string,
+    content: ReactNode,
+    emptyText?: string,
+  ) {
     return (
       <Card className="flex min-h-0 flex-1 flex-col p-0">
         <div className="border-b border-slate-200/70 px-5 py-5 lg:px-6">
           <h3 className="font-display text-3xl text-slate-900">{title}</h3>
           <p className="mt-2 text-sm leading-7 text-slate-500">{subtitle}</p>
         </div>
-        <div className="space-y-4 px-5 py-5 lg:px-6">
-          {items.length ? (
-            items.map((item) => (
-              <Card key={item} muted className="rounded-[1.6rem] p-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="text-sm font-semibold leading-7 text-slate-700">{item}</div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="secondary" size="sm" onClick={() => onSelect(item)}>
-                      {actionLabel}
-                    </Button>
-                    <Button variant="secondary" size="sm" onClick={() => onPromptSelect(item)}>
-                      Ask Now
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))
-          ) : (
-            <div className="rounded-[1.5rem] bg-slate-50 px-5 py-10 text-center text-sm text-slate-500">{emptyText}</div>
-          )}
-        </div>
+        <div className="space-y-4 px-5 py-5 lg:px-6">{content || <div className="rounded-[1.5rem] bg-slate-50 px-5 py-10 text-center text-sm text-slate-500">{emptyText}</div>}</div>
       </Card>
     );
   }
@@ -137,22 +123,56 @@ export function ChatPanel({
   if (activeNav === "Recent Questions") {
     return renderLibraryView(
       "Recent Questions",
-      "Your last live handbook questions are stored locally so you can reopen or ask them again.",
-      recentQuestions,
-      onRecentQuestionSelect,
-      "No recent questions yet. Ask the handbook something first.",
-      "Ask Again",
+      "Recent conversations now reopen the original thread instead of sending the same question again.",
+      recentConversations.length ? (
+        recentConversations.map((conversation) => (
+          <Card key={conversation.id} muted className="rounded-[1.6rem] p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <div className="text-sm font-semibold leading-7 text-slate-700">{conversation.title}</div>
+                <div className="mt-1 text-xs leading-6 text-slate-500">{conversation.question}</div>
+                <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                  {conversation.timestamp}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" size="sm" onClick={() => onRecentQuestionSelect(conversation.id)}>
+                  Open Thread
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => onPromptSelect(conversation.question)}>
+                  Ask Again
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ))
+      ) : undefined,
+      "No recent conversations yet. Ask the handbook something first.",
     );
   }
 
   if (activeNav === "Saved Queries") {
     return renderLibraryView(
       "Saved Queries",
-      "Saved queries persist locally in this browser so you can reuse common handbook prompts quickly.",
-      savedQueries,
-      onSavedQuerySelect,
-      "No saved queries yet. Use “Save Query” under the chat input to keep one here.",
-      "Load Query",
+      "Saved queries persist locally in this browser so you can reuse handbook prompts quickly.",
+      savedQueries.length ? (
+        savedQueries.map((query) => (
+          <Card key={query} muted className="rounded-[1.6rem] p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="text-sm font-semibold leading-7 text-slate-700">{query}</div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" size="sm" onClick={() => onSavedQuerySelect(query)}>
+                  Load Query
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => onPromptSelect(query)}>
+                  Ask Now
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ))
+      ) : undefined,
+      "No saved queries yet. Use 'Save Query' under the chat input to keep one here.",
     );
   }
 
@@ -192,8 +212,8 @@ export function ChatPanel({
               ))}
             </div>
             <div className="mt-4 text-sm leading-7 text-slate-500">
-              Recent questions and saved queries are now stored locally in this browser. Saved queries can be loaded
-              back into the input or sent again.
+              Recent conversations and saved queries are stored locally in this browser. Recent items reopen past threads,
+              while saved queries reload reusable prompts into the input.
             </div>
           </Card>
         </div>
@@ -202,7 +222,7 @@ export function ChatPanel({
   }
 
   return (
-    <div className="flex h-full flex-col gap-4">
+    <div className="flex h-full min-h-0 flex-col gap-4">
       <Card className="flex items-center justify-between gap-4 p-5">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -244,72 +264,70 @@ export function ChatPanel({
         </div>
       </Card>
 
-      {!messages.length ? (
-        <Card className="overflow-hidden p-0">
-          <div className="grid gap-6 bg-gradient-to-br from-white via-[#fff7f4] to-[#f3efec] px-6 py-7 lg:grid-cols-[1.2fr,0.8fr] lg:px-8">
-            <div>
-              <Badge tone="success">Handbook-only web search</Badge>
-              <h3 className="mt-4 font-display text-4xl leading-tight text-slate-900">
-                Ask live questions against the PolyU RPg Handbook
-              </h3>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600">
-                New chats now use a live OpenAI-powered web search flow that is restricted to the official PolyU
-                handbook scope. Answers are structured for demos, with concise summaries, key points, cautions, and
-                clearly visible source links.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <TogglePill
-                  label={answerMode === "concise" ? "Concise Answer" : "Detailed Answer"}
-                  active
-                  onClick={() => onAnswerModeChange(answerMode === "concise" ? "detailed" : "concise")}
-                />
-                <TogglePill
-                  label={showCitations ? "Hide citations" : "Show citations"}
-                  active={showCitations}
-                  onClick={onToggleCitations}
-                />
-              </div>
-              <div className="mt-6 flex flex-wrap gap-2">
-                {handbookPolicies.map((policy) => (
-                  <Chip key={policy} type="button">
-                    {policy}
-                  </Chip>
-                ))}
-              </div>
-              {!apiConfigured ? (
-                <div className="mt-6 rounded-[1.4rem] bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-900/80">
-                  Set <code>VITE_HANDBOOK_API_BASE_URL</code> before publishing the frontend. The current build has no live
-                  backend endpoint configured yet.
-                </div>
-              ) : (
-                <div className="mt-6 rounded-[1.4rem] bg-emerald-50 px-4 py-4 text-sm leading-6 text-emerald-900/80">
-                  New chat is ready. Questions will be sent to the live handbook backend and recent activity will be saved in this browser.
-                </div>
-              )}
-            </div>
-            <div className="grid gap-3">
-              {quickActions.map((action, index) => (
-                <button
-                  key={action.title}
-                  type="button"
-                  onClick={() => onPromptSelect(action.prompt)}
-                  className="rounded-[1.5rem] bg-white/85 p-4 text-left shadow-soft transition hover:-translate-y-0.5 hover:bg-white"
-                  style={{ animationDelay: `${index * 80}ms` }}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-semibold text-slate-800">{action.title}</div>
-                    <Sparkles size={16} className="text-primary" />
-                  </div>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">{action.description}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        </Card>
-      ) : null}
-
       <Card className="flex min-h-0 flex-1 flex-col p-0">
         <div ref={scrollRef} className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5 lg:px-6">
+          {!messages.length ? (
+            <div className="grid gap-6 bg-gradient-to-br from-white via-[#fff7f4] to-[#f3efec] px-1 py-1 lg:grid-cols-[1.2fr,0.8fr]">
+              <div className="px-5 py-6">
+                <Badge tone="success">Handbook-only web search</Badge>
+                <h3 className="mt-4 font-display text-4xl leading-tight text-slate-900">
+                  Ask live questions against the PolyU RPg Handbook
+                </h3>
+                <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600">
+                  New chats now use a live OpenAI-powered web search flow that is restricted to the official PolyU
+                  handbook scope. Answers are structured for demos, with concise summaries, key points, cautions, and
+                  clearly visible source links.
+                </p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <TogglePill
+                    label={answerMode === "concise" ? "Concise Answer" : "Detailed Answer"}
+                    active
+                    onClick={() => onAnswerModeChange(answerMode === "concise" ? "detailed" : "concise")}
+                  />
+                  <TogglePill
+                    label={showCitations ? "Hide citations" : "Show citations"}
+                    active={showCitations}
+                    onClick={onToggleCitations}
+                  />
+                </div>
+                <div className="mt-6 flex flex-wrap gap-2">
+                  {handbookPolicies.map((policy) => (
+                    <Chip key={policy} type="button">
+                      {policy}
+                    </Chip>
+                  ))}
+                </div>
+                {!apiConfigured ? (
+                  <div className="mt-6 rounded-[1.4rem] bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-900/80">
+                    Set <code>VITE_HANDBOOK_API_BASE_URL</code> before publishing the frontend. The current build has no live
+                    backend endpoint configured yet.
+                  </div>
+                ) : (
+                  <div className="mt-6 rounded-[1.4rem] bg-emerald-50 px-4 py-4 text-sm leading-6 text-emerald-900/80">
+                    New chat is ready. Questions will be sent to the live handbook backend and recent activity will be saved in this browser.
+                  </div>
+                )}
+              </div>
+              <div className="grid gap-3 px-5 py-6">
+                {quickActions.map((action, index) => (
+                  <button
+                    key={action.title}
+                    type="button"
+                    onClick={() => onPromptSelect(action.prompt)}
+                    className="rounded-[1.5rem] bg-white/85 p-4 text-left shadow-soft transition hover:-translate-y-0.5 hover:bg-white"
+                    style={{ animationDelay: `${index * 80}ms` }}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-sm font-semibold text-slate-800">{action.title}</div>
+                      <Sparkles size={16} className="text-primary" />
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">{action.description}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {messages.map((message) => {
             const response = message.response;
             const canRegenerate = message.id === latestAssistantMessageId;
@@ -406,11 +424,16 @@ export function ChatPanel({
             <div className="flex justify-start">
               <Card muted className="max-w-xl rounded-[1.8rem] px-5 py-4">
                 <div className="flex items-center gap-3">
-                  <LoadingDots />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primarySoft text-primary">
+                    <LoaderCircle size={20} className="animate-spin" />
+                  </div>
                   <div>
-                    <div className="text-sm font-semibold text-slate-700">Searching the handbook</div>
+                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                      AI is preparing an answer
+                      <LoadingDots />
+                    </div>
                     <div className="text-sm text-slate-500">
-                      Querying the live RPg handbook scope and drafting a structured answer...
+                      Querying the live RPg handbook scope and drafting a structured response...
                     </div>
                   </div>
                 </div>
@@ -419,7 +442,7 @@ export function ChatPanel({
           ) : null}
         </div>
 
-        <div className="border-t border-slate-200/70 px-5 py-5 lg:px-6">
+        <div className="sticky bottom-0 z-10 border-t border-slate-200/70 bg-white/95 px-5 py-5 backdrop-blur lg:px-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3">
               <SegmentedControl

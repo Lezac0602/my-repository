@@ -42,6 +42,15 @@ export interface ChatMessage {
   response?: HandbookApiResponse;
 }
 
+export interface RecentConversation {
+  id: string;
+  title: string;
+  question: string;
+  timestamp: string;
+  messages: ChatMessage[];
+  previousResponseId?: string;
+}
+
 export interface QuickAction {
   title: string;
   description: string;
