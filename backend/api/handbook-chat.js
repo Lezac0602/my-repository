@@ -4,6 +4,7 @@ import { Ratelimit } from "@upstash/ratelimit";
 
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 const handbookPrefix = (process.env.HANDBOOK_URL_PREFIX || "https://www.polyu.edu.hk/gs/rpghandbook/").trim();
+const allowedModels = ["gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano"];
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || "http://localhost:5173,https://lezac0602.github.io")
   .split(",")
   .map((value) => value.trim())
@@ -59,6 +60,7 @@ async function parseBody(req) {
 function validateRequest(body) {
   const question = typeof body?.question === "string" ? body.question.trim() : "";
   const mode = body?.mode === "detailed" ? "detailed" : "concise";
+  const model = allowedModels.includes(body?.model) ? body.model : "gpt-5.4";
   const previousResponseId =
     typeof body?.previousResponseId === "string" && body.previousResponseId.trim()
       ? body.previousResponseId.trim()
@@ -87,6 +89,7 @@ function validateRequest(body) {
   return {
     question,
     mode,
+    model,
     history,
     previousResponseId,
   };
@@ -262,9 +265,9 @@ function createNoSourceResponse() {
   };
 }
 
-async function fetchHandbookResponse({ question, history, mode, previousResponseId, strictRetry }) {
+async function fetchHandbookResponse({ question, history, mode, model, previousResponseId, strictRetry }) {
   const response = await openai.responses.create({
-    model: "gpt-5",
+    model,
     reasoning: { effort: "low" },
     tools: [
       {
@@ -299,6 +302,7 @@ async function fetchHandbookResponse({ question, history, mode, previousResponse
     sourcePages,
     previousResponseId: response.id,
     status: sourcePages.length ? "ok" : "no_handbook_source",
+    model,
   };
 }
 

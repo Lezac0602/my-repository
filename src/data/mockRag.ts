@@ -1,4 +1,4 @@
-import { MockStudent, QuickAction } from "../types";
+import { HandbookModel, MockStudent, QuickAction } from "../types";
 
 export const navigationItems = ["Home", "Chat", "Recent Questions", "Saved Queries", "Settings"] as const;
 
@@ -52,6 +52,28 @@ export const handbookPolicies = [
   "Handbook-only answers",
   "Live web search",
   "Clickable citations",
+];
+
+export const handbookModelOptions: Array<{
+  value: HandbookModel;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "gpt-5.4",
+    label: "GPT-5.4",
+    description: "Best overall reasoning quality for handbook questions.",
+  },
+  {
+    value: "gpt-5.4-mini",
+    label: "GPT-5.4 mini",
+    description: "Faster and cheaper while still supporting web search.",
+  },
+  {
+    value: "gpt-5.4-nano",
+    label: "GPT-5.4 nano",
+    description: "Fastest lightweight option for simple handbook lookups.",
+  },
 ];
 
 export const mockStudent: MockStudent = {

@@ -2,6 +2,7 @@ export type NavItem = "Home" | "Chat" | "Recent Questions" | "Saved Queries" | "
 
 export type AnswerMode = "concise" | "detailed";
 export type ThemeMode = "light" | "dark";
+export type HandbookModel = "gpt-5.4" | "gpt-5.4-mini" | "gpt-5.4-nano";
 
 export type ChatRole = "user" | "assistant";
 
@@ -21,6 +22,7 @@ export interface HandbookApiRequest {
   question: string;
   history: HandbookChatTurn[];
   mode: AnswerMode;
+  model: HandbookModel;
   previousResponseId?: string;
 }
 
@@ -50,6 +52,7 @@ export interface RecentConversation {
   timestamp: string;
   messages: ChatMessage[];
   previousResponseId?: string;
+  model?: HandbookModel;
 }
 
 export interface QuickAction {

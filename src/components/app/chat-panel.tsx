@@ -13,8 +13,8 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
-import { exampleChips, quickActions } from "../../data/mockRag";
-import { AnswerMode, ChatMessage, NavItem, RecentConversation, ThemeMode } from "../../types";
+import { exampleChips, handbookModelOptions, quickActions } from "../../data/mockRag";
+import { AnswerMode, ChatMessage, HandbookModel, NavItem, RecentConversation, ThemeMode } from "../../types";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
@@ -38,6 +38,7 @@ interface ChatPanelProps {
   apiConfigured: boolean;
   apiBaseUrl: string;
   handbookPolicies: string[];
+  selectedModel: HandbookModel;
   chatSessionCount: number;
   themeMode: ThemeMode;
   onInputChange: (value: string) => void;
@@ -50,6 +51,7 @@ interface ChatPanelProps {
   onCopy: (messageId: string) => void;
   onViewSource: (messageId: string) => void;
   onAnswerModeChange: (mode: AnswerMode) => void;
+  onModelChange: (model: HandbookModel) => void;
   onThemeModeChange: (mode: ThemeMode) => void;
   onToggleCitations: () => void;
   onOpenSidebar: () => void;
@@ -70,6 +72,7 @@ export function ChatPanel({
   apiConfigured,
   apiBaseUrl,
   handbookPolicies,
+  selectedModel,
   chatSessionCount,
   themeMode,
   onInputChange,
@@ -82,6 +85,7 @@ export function ChatPanel({
   onCopy,
   onViewSource,
   onAnswerModeChange,
+  onModelChange,
   onThemeModeChange,
   onToggleCitations,
   onOpenSidebar,
@@ -229,6 +233,7 @@ export function ChatPanel({
                 {apiConfigured ? "Backend connected" : "Backend missing"}
               </Badge>
               <Badge tone="primary">Session {chatSessionCount}</Badge>
+              <Badge tone="neutral">{handbookModelOptions.find((option) => option.value === selectedModel)?.label ?? selectedModel}</Badge>
             </div>
             <div className="mt-4 text-sm text-slate-600">
               <div className="font-semibold text-slate-800">API base</div>
@@ -236,7 +241,33 @@ export function ChatPanel({
             </div>
             <div className="mt-4 text-sm text-slate-600">
               <div className="font-semibold text-slate-800">Search model</div>
-              <div className="mt-1">GPT-5 with OpenAI Responses API web search</div>
+              <div className="mt-1">
+                {handbookModelOptions.find((option) => option.value === selectedModel)?.label ?? selectedModel} with
+                OpenAI Responses API web search
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="text-sm font-semibold text-slate-800">Model selection</div>
+              <div className="mt-3 space-y-2">
+                {handbookModelOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => onModelChange(option.value)}
+                    className={`w-full rounded-[1.2rem] border px-4 py-3 text-left transition ${
+                      selectedModel === option.value
+                        ? "border-primary/30 bg-primarySoft"
+                        : "border-border bg-panel hover:bg-panelMuted"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-sm font-semibold text-slate-800">{option.label}</div>
+                      {selectedModel === option.value ? <Badge tone="primary">Selected</Badge> : null}
+                    </div>
+                    <div className="mt-1 text-sm leading-6 text-slate-500">{option.description}</div>
+                  </button>
+                ))}
+              </div>
             </div>
           </Card>
           <Card muted className="p-4">

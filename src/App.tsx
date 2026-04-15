@@ -7,17 +7,19 @@ import { Button } from "./components/ui/button";
 import { Modal } from "./components/ui/modal";
 import {
   handbookPolicies,
+  handbookModelOptions,
   savedQueries as defaultSavedQueries,
   suggestedQuestions,
 } from "./data/mockRag";
 import { requestHandbookAnswer, getHandbookApiBaseUrl, isHandbookApiConfigured } from "./lib/handbook-api";
 import { formatClockTime } from "./lib/utils";
-import { AnswerMode, ChatMessage, HandbookApiResponse, HandbookChatTurn, NavItem, RecentConversation, SourceLink, ThemeMode } from "./types";
+import { AnswerMode, ChatMessage, HandbookApiResponse, HandbookChatTurn, HandbookModel, NavItem, RecentConversation, SourceLink, ThemeMode } from "./types";
 
 function App() {
   const recentStorageKey = "campus-live-recent-questions";
   const savedStorageKey = "campus-live-saved-queries";
   const themeStorageKey = "campus-live-theme";
+  const modelStorageKey = "campus-live-model";
   const [activeNav, setActiveNav] = useState<NavItem>("Home");
   const [answerMode, setAnswerMode] = useState<AnswerMode>("concise");
   const [showCitations, setShowCitations] = useState(true);
@@ -28,6 +30,14 @@ function App() {
 
     const stored = window.localStorage.getItem(themeStorageKey);
     return stored === "dark" ? "dark" : "light";
+  });
+  const [selectedModel, setSelectedModel] = useState<HandbookModel>(() => {
+    if (typeof window === "undefined") {
+      return "gpt-5.4";
+    }
+
+    const stored = window.localStorage.getItem(modelStorageKey);
+    return handbookModelOptions.some((option) => option.value === stored) ? (stored as HandbookModel) : "gpt-5.4";
   });
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -55,7 +65,8 @@ function App() {
               typeof item.title === "string" &&
               typeof item.question === "string" &&
               typeof item.timestamp === "string" &&
-              Array.isArray(item.messages)
+              Array.isArray(item.messages) &&
+              (!("model" in item) || typeof item.model === "string")
             );
           })
         : [];
@@ -131,6 +142,12 @@ function App() {
     }
   }, [themeMode]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(modelStorageKey, selectedModel);
+    }
+  }, [selectedModel]);
+
   function buildHistory(messageList: ChatMessage[]): HandbookChatTurn[] {
     return messageList.map((message) => ({
       role: message.role,
@@ -163,6 +180,7 @@ function App() {
       timestamp: formatClockTime(new Date()),
       messages: nextMessages,
       previousResponseId: nextResponseId,
+      model: selectedModel,
     };
 
     if (!currentConversationId) {
@@ -220,6 +238,7 @@ function App() {
         question: trimmed,
         history,
         mode: answerMode,
+        model: selectedModel,
         previousResponseId: threadResponseId,
       });
 
@@ -267,6 +286,7 @@ function App() {
         question,
         history,
         mode: answerMode,
+        model: selectedModel,
       });
 
       const updatedMessages = messages.map((message) =>
@@ -351,6 +371,7 @@ function App() {
     setActiveNav("Chat");
     setMessages(conversation.messages);
     setInput("");
+    setSelectedModel(conversation.model ?? "gpt-5.4");
     setThreadResponseId(conversation.previousResponseId);
     setCurrentConversationId(conversation.id);
     setSelectedSources(null);
@@ -370,6 +391,11 @@ function App() {
 
     upsertSavedQuery(candidate);
     setActiveNav("Saved Queries");
+  }
+
+  function handleModelChange(model: HandbookModel) {
+    setSelectedModel(model);
+    setThreadResponseId(undefined);
   }
 
   const sidebarDrawerClasses = "fixed inset-y-0 left-0 z-40 w-[88vw] max-w-sm overflow-y-auto bg-transparent p-4 lg:hidden";
@@ -407,6 +433,7 @@ function App() {
             apiConfigured={apiConfigured}
             apiBaseUrl={apiBaseUrl}
             handbookPolicies={handbookPolicies}
+            selectedModel={selectedModel}
             chatSessionCount={chatSessionCount}
             themeMode={themeMode}
             onInputChange={setInput}
@@ -419,6 +446,7 @@ function App() {
             onCopy={handleCopy}
             onViewSource={handleViewSource}
             onAnswerModeChange={setAnswerMode}
+            onModelChange={handleModelChange}
             onThemeModeChange={setThemeMode}
             onToggleCitations={() => setShowCitations((value) => !value)}
             onOpenSidebar={() => setSidebarOpen(true)}
