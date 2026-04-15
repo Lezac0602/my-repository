@@ -8,7 +8,7 @@ import { Modal } from "./components/ui/modal";
 import {
   handbookPolicies,
   handbookRootUrl,
-  savedQueries,
+  savedQueries as defaultSavedQueries,
   suggestedQuestions,
 } from "./data/mockRag";
 import { requestHandbookAnswer, getHandbookApiBaseUrl, isHandbookApiConfigured } from "./lib/handbook-api";
@@ -16,6 +16,8 @@ import { formatClockTime } from "./lib/utils";
 import { AnswerMode, ChatMessage, HandbookApiResponse, HandbookChatTurn, NavItem, SourceLink } from "./types";
 
 function App() {
+  const recentStorageKey = "campus-live-recent-questions";
+  const savedStorageKey = "campus-live-saved-queries";
   const [activeNav, setActiveNav] = useState<NavItem>("Chat");
   const [answerMode, setAnswerMode] = useState<AnswerMode>("concise");
   const [showCitations, setShowCitations] = useState(true);
@@ -24,13 +26,49 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [recentQuestions, setRecentQuestions] = useState<string[]>([]);
+  const [recentQuestions, setRecentQuestions] = useState<string[]>(() => {
+    if (typeof window === "undefined") {
+      return [];
+    }
+
+    const stored = window.localStorage.getItem(recentStorageKey);
+    if (!stored) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+    } catch {
+      return [];
+    }
+  });
+  const [savedQueries, setSavedQueries] = useState<string[]>(() => {
+    if (typeof window === "undefined") {
+      return defaultSavedQueries;
+    }
+
+    const stored = window.localStorage.getItem(savedStorageKey);
+    if (!stored) {
+      return defaultSavedQueries;
+    }
+
+    try {
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) && parsed.length
+        ? parsed.filter((item): item is string => typeof item === "string")
+        : defaultSavedQueries;
+    } catch {
+      return defaultSavedQueries;
+    }
+  });
   const [selectedSources, setSelectedSources] = useState<{
     title: string;
     subtitle?: string;
     sources: SourceLink[];
   } | null>(null);
   const [threadResponseId, setThreadResponseId] = useState<string>();
+  const [chatSessionCount, setChatSessionCount] = useState(1);
 
   const apiConfigured = isHandbookApiConfigured();
   const apiBaseUrl = getHandbookApiBaseUrl();
@@ -52,6 +90,18 @@ function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(recentStorageKey, JSON.stringify(recentQuestions));
+    }
+  }, [recentQuestions]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(savedStorageKey, JSON.stringify(savedQueries));
+    }
+  }, [savedQueries]);
+
   function buildHistory(messageList: ChatMessage[]): HandbookChatTurn[] {
     return messageList.map((message) => ({
       role: message.role,
@@ -61,6 +111,19 @@ function App() {
 
   function upsertRecentQuestion(question: string) {
     setRecentQuestions((current) => [question, ...current.filter((item) => item !== question)].slice(0, 6));
+  }
+
+  function upsertSavedQuery(question: string) {
+    const trimmed = question.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    setSavedQueries((current) => [trimmed, ...current.filter((item) => item !== trimmed)].slice(0, 10));
+  }
+
+  function getLatestUserQuestion() {
+    return [...messages].reverse().find((message) => message.role === "user")?.content ?? "";
   }
 
   function createAssistantMessage(response: HandbookApiResponse): ChatMessage {
@@ -201,11 +264,34 @@ function App() {
     setThreadResponseId(undefined);
     setSelectedSources(null);
     setSidebarOpen(false);
+    setChatSessionCount((current) => current + 1);
   }
 
   function handlePromptSelect(prompt: string) {
+    setActiveNav("Chat");
     setInput(prompt);
     void runQuery(prompt);
+  }
+
+  function handleRecentQuestionSelect(question: string) {
+    setActiveNav("Chat");
+    setInput(question);
+    void runQuery(question);
+  }
+
+  function handleSavedQuerySelect(question: string) {
+    setActiveNav("Chat");
+    setInput(question);
+  }
+
+  function handleSaveCurrentQuery() {
+    const candidate = input.trim() || getLatestUserQuestion().trim();
+    if (!candidate) {
+      return;
+    }
+
+    upsertSavedQuery(candidate);
+    setActiveNav("Saved Queries");
   }
 
   const sidebarDrawerClasses = "fixed inset-y-0 left-0 z-40 w-[88vw] max-w-sm overflow-y-auto bg-transparent p-4 lg:hidden";
@@ -222,15 +308,18 @@ function App() {
             apiConfigured={apiConfigured}
             onNavChange={setActiveNav}
             onSuggestedQuestion={handlePromptSelect}
-            onRecentQuestionSelect={handlePromptSelect}
-            onSavedQuerySelect={setInput}
+            onRecentQuestionSelect={handleRecentQuestionSelect}
+            onSavedQuerySelect={handleSavedQuerySelect}
             onNewChat={handleNewChat}
           />
         </aside>
 
         <div className="min-w-0">
           <ChatPanel
+            activeNav={activeNav}
             messages={messages}
+            recentQuestions={recentQuestions}
+            savedQueries={savedQueries}
             input={input}
             isGenerating={isGenerating}
             answerMode={answerMode}
@@ -240,9 +329,13 @@ function App() {
             apiConfigured={apiConfigured}
             apiBaseUrl={apiBaseUrl}
             handbookPolicies={handbookPolicies}
+            chatSessionCount={chatSessionCount}
             onInputChange={setInput}
             onSubmit={() => void runQuery(input)}
             onPromptSelect={handlePromptSelect}
+            onRecentQuestionSelect={handleRecentQuestionSelect}
+            onSavedQuerySelect={handleSavedQuerySelect}
+            onSaveCurrentQuery={handleSaveCurrentQuery}
             onRegenerate={regenerateLatestAnswer}
             onCopy={handleCopy}
             onViewSource={handleViewSource}
@@ -272,8 +365,8 @@ function App() {
             apiConfigured={apiConfigured}
             onNavChange={setActiveNav}
             onSuggestedQuestion={handlePromptSelect}
-            onRecentQuestionSelect={handlePromptSelect}
-            onSavedQuerySelect={setInput}
+            onRecentQuestionSelect={handleRecentQuestionSelect}
+            onSavedQuerySelect={handleSavedQuerySelect}
             onNewChat={handleNewChat}
           />
         </div>

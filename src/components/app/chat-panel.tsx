@@ -1,5 +1,6 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef } from "react";
 import {
+  BookmarkPlus,
   Copy,
   FileStack,
   PanelLeftOpen,
@@ -11,7 +12,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { exampleChips, handbookRootUrl, quickActions } from "../../data/mockRag";
-import { AnswerMode, ChatMessage } from "../../types";
+import { AnswerMode, ChatMessage, NavItem } from "../../types";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
@@ -22,7 +23,10 @@ import { Textarea } from "../ui/textarea";
 import { TogglePill } from "../ui/toggle-pill";
 
 interface ChatPanelProps {
+  activeNav: NavItem;
   messages: ChatMessage[];
+  recentQuestions: string[];
+  savedQueries: string[];
   input: string;
   isGenerating: boolean;
   answerMode: AnswerMode;
@@ -32,9 +36,13 @@ interface ChatPanelProps {
   apiConfigured: boolean;
   apiBaseUrl: string;
   handbookPolicies: string[];
+  chatSessionCount: number;
   onInputChange: (value: string) => void;
   onSubmit: () => void;
   onPromptSelect: (question: string) => void;
+  onRecentQuestionSelect: (question: string) => void;
+  onSavedQuerySelect: (question: string) => void;
+  onSaveCurrentQuery: () => void;
   onRegenerate: (messageId: string) => void;
   onCopy: (messageId: string) => void;
   onViewSource: (messageId: string) => void;
@@ -45,7 +53,10 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({
+  activeNav,
   messages,
+  recentQuestions,
+  savedQueries,
   input,
   isGenerating,
   answerMode,
@@ -55,9 +66,13 @@ export function ChatPanel({
   apiConfigured,
   apiBaseUrl,
   handbookPolicies,
+  chatSessionCount,
   onInputChange,
   onSubmit,
   onPromptSelect,
+  onRecentQuestionSelect,
+  onSavedQuerySelect,
+  onSaveCurrentQuery,
   onRegenerate,
   onCopy,
   onViewSource,
@@ -87,6 +102,105 @@ export function ChatPanel({
     }
   }
 
+  function renderLibraryView(title: string, subtitle: string, items: string[], onSelect: (value: string) => void, emptyText: string, actionLabel: string) {
+    return (
+      <Card className="flex min-h-0 flex-1 flex-col p-0">
+        <div className="border-b border-slate-200/70 px-5 py-5 lg:px-6">
+          <h3 className="font-display text-3xl text-slate-900">{title}</h3>
+          <p className="mt-2 text-sm leading-7 text-slate-500">{subtitle}</p>
+        </div>
+        <div className="space-y-4 px-5 py-5 lg:px-6">
+          {items.length ? (
+            items.map((item) => (
+              <Card key={item} muted className="rounded-[1.6rem] p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="text-sm font-semibold leading-7 text-slate-700">{item}</div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => onSelect(item)}>
+                      {actionLabel}
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={() => onPromptSelect(item)}>
+                      Ask Now
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))
+          ) : (
+            <div className="rounded-[1.5rem] bg-slate-50 px-5 py-10 text-center text-sm text-slate-500">{emptyText}</div>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
+  if (activeNav === "Recent Questions") {
+    return renderLibraryView(
+      "Recent Questions",
+      "Your last live handbook questions are stored locally so you can reopen or ask them again.",
+      recentQuestions,
+      onRecentQuestionSelect,
+      "No recent questions yet. Ask the handbook something first.",
+      "Ask Again",
+    );
+  }
+
+  if (activeNav === "Saved Queries") {
+    return renderLibraryView(
+      "Saved Queries",
+      "Saved queries persist locally in this browser so you can reuse common handbook prompts quickly.",
+      savedQueries,
+      onSavedQuerySelect,
+      "No saved queries yet. Use “Save Query” under the chat input to keep one here.",
+      "Load Query",
+    );
+  }
+
+  if (activeNav === "Settings") {
+    return (
+      <Card className="flex min-h-0 flex-1 flex-col p-0">
+        <div className="border-b border-slate-200/70 px-5 py-5 lg:px-6">
+          <h3 className="font-display text-3xl text-slate-900">Settings</h3>
+          <p className="mt-2 text-sm leading-7 text-slate-500">
+            Live handbook search configuration for this browser session and deployed frontend.
+          </p>
+        </div>
+        <div className="space-y-4 px-5 py-5 lg:px-6">
+          <Card muted className="p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone={apiConfigured ? "success" : "warning"}>
+                {apiConfigured ? "Backend connected" : "Backend missing"}
+              </Badge>
+              <Badge tone="primary">Session {chatSessionCount}</Badge>
+            </div>
+            <div className="mt-4 text-sm text-slate-600">
+              <div className="font-semibold text-slate-800">API base</div>
+              <div className="mt-1 break-all">{apiConfigured ? apiBaseUrl : "No API base configured"}</div>
+            </div>
+            <div className="mt-4 text-sm text-slate-600">
+              <div className="font-semibold text-slate-800">Handbook scope</div>
+              <div className="mt-1 break-all">{handbookRootUrl}</div>
+            </div>
+          </Card>
+          <Card muted className="p-4">
+            <div className="text-sm font-semibold text-slate-800">Client-side features</div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {handbookPolicies.map((policy) => (
+                <Chip key={policy} type="button">
+                  {policy}
+                </Chip>
+              ))}
+            </div>
+            <div className="mt-4 text-sm leading-7 text-slate-500">
+              Recent questions and saved queries are now stored locally in this browser. Saved queries can be loaded
+              back into the input or sent again.
+            </div>
+          </Card>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col gap-4">
       <Card className="flex items-center justify-between gap-4 p-5">
@@ -106,6 +220,7 @@ export function ChatPanel({
                 </>
               )}
             </Badge>
+            <Badge tone="neutral">Session {chatSessionCount}</Badge>
           </div>
           <h2 className="mt-3 font-display text-3xl text-slate-900">RPg handbook search workspace</h2>
           <p className="mt-1 text-sm text-slate-500">
@@ -167,8 +282,8 @@ export function ChatPanel({
                   backend endpoint configured yet.
                 </div>
               ) : (
-                <div className="mt-6 rounded-[1.4rem] bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-600">
-                  Active API base: <span className="font-semibold text-slate-800">{apiBaseUrl}</span>
+                <div className="mt-6 rounded-[1.4rem] bg-emerald-50 px-4 py-4 text-sm leading-6 text-emerald-900/80">
+                  New chat is ready. Questions will be sent to the live handbook backend and recent activity will be saved in this browser.
                 </div>
               )}
             </div>
@@ -228,14 +343,14 @@ export function ChatPanel({
                   <div className="mt-5">
                     <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Key details</div>
                     <ul className="mt-2 space-y-2">
-                      {(response?.bullets.length ? response.bullets : ["No handbook-supported bullet points were returned for this answer."]).map(
-                        (bullet) => (
-                          <li key={bullet} className="flex gap-3 text-sm leading-7 text-slate-700">
-                            <span className="mt-2 h-2 w-2 rounded-full bg-primary" />
-                            <span>{bullet}</span>
-                          </li>
-                        ),
-                      )}
+                      {(response?.bullets.length
+                        ? response.bullets
+                        : ["No handbook-supported bullet points were returned for this answer."]).map((bullet) => (
+                        <li key={bullet} className="flex gap-3 text-sm leading-7 text-slate-700">
+                          <span className="mt-2 h-2 w-2 rounded-full bg-primary" />
+                          <span>{bullet}</span>
+                        </li>
+                      ))}
                     </ul>
                   </div>
                   <div className="mt-5 rounded-[1.4rem] bg-amber-50 px-4 py-4">
@@ -347,10 +462,21 @@ export function ChatPanel({
                   ))}
                 </div>
               </div>
-              <Button type="submit" disabled={!input.trim() || isGenerating}>
-                <SendHorizonal size={16} />
-                Send
-              </Button>
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={onSaveCurrentQuery}
+                  disabled={!input.trim() && !messages.some((message) => message.role === "user")}
+                >
+                  <BookmarkPlus size={16} />
+                  Save Query
+                </Button>
+                <Button type="submit" disabled={!input.trim() || isGenerating}>
+                  <SendHorizonal size={16} />
+                  Send
+                </Button>
+              </div>
             </div>
           </form>
         </div>
