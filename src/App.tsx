@@ -414,7 +414,6 @@ function App() {
             onSuggestedQuestion={handlePromptSelect}
             onRecentQuestionSelect={handleRecentQuestionSelect}
             onSavedQuerySelect={handleSavedQuerySelect}
-            onNewChat={handleNewChat}
           />
         </aside>
 
@@ -475,7 +474,6 @@ function App() {
             onSuggestedQuestion={handlePromptSelect}
             onRecentQuestionSelect={handleRecentQuestionSelect}
             onSavedQuerySelect={handleSavedQuerySelect}
-            onNewChat={handleNewChat}
           />
         </div>
       </aside>

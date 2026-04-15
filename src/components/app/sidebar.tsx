@@ -6,7 +6,6 @@ import {
   History,
   House,
   MessageSquareText,
-  Plus,
   Sparkles,
   UserRound,
   Wifi,
@@ -16,7 +15,6 @@ import { mockStudent, navigationItems } from "../../data/mockRag";
 import { NavItem, RecentConversation } from "../../types";
 import { cn } from "../../lib/utils";
 import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 
 interface SidebarProps {
@@ -29,7 +27,6 @@ interface SidebarProps {
   onSuggestedQuestion: (question: string) => void;
   onRecentQuestionSelect: (conversationId: string) => void;
   onSavedQuerySelect: (question: string) => void;
-  onNewChat: () => void;
 }
 
 const navIcons = {
@@ -50,7 +47,6 @@ export function Sidebar({
   onSuggestedQuestion,
   onRecentQuestionSelect,
   onSavedQuerySelect,
-  onNewChat,
 }: SidebarProps) {
   return (
     <div className="flex h-full flex-col gap-4">
@@ -83,11 +79,6 @@ export function Sidebar({
           </Badge>
           <Badge tone="primary">Live campus assistant</Badge>
         </div>
-
-        <Button className="mt-5 w-full" onClick={onNewChat}>
-          <Plus size={16} />
-          New Chat
-        </Button>
 
         <div className="mt-6 space-y-2">
           {navigationItems.map((item) => {

@@ -239,36 +239,6 @@ export function ChatPanel({
               <div className="font-semibold text-slate-800">API base</div>
               <div className="mt-1 break-all">{apiConfigured ? apiBaseUrl : "No API base configured"}</div>
             </div>
-            <div className="mt-4 text-sm text-slate-600">
-              <div className="font-semibold text-slate-800">Search model</div>
-              <div className="mt-1">
-                {handbookModelOptions.find((option) => option.value === selectedModel)?.label ?? selectedModel} with
-                OpenAI Responses API web search
-              </div>
-            </div>
-            <div className="mt-4">
-              <div className="text-sm font-semibold text-slate-800">Model selection</div>
-              <div className="mt-3 space-y-2">
-                {handbookModelOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => onModelChange(option.value)}
-                    className={`w-full rounded-[1.2rem] border px-4 py-3 text-left transition ${
-                      selectedModel === option.value
-                        ? "border-primary/30 bg-primarySoft"
-                        : "border-border bg-panel hover:bg-panelMuted"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-sm font-semibold text-slate-800">{option.label}</div>
-                      {selectedModel === option.value ? <Badge tone="primary">Selected</Badge> : null}
-                    </div>
-                    <div className="mt-1 text-sm leading-6 text-slate-500">{option.description}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
           </Card>
           <Card muted className="p-4">
             <div className="text-sm font-semibold text-slate-800">Theme</div>
@@ -568,6 +538,25 @@ export function ChatPanel({
             <Badge tone={apiConfigured ? "success" : "warning"}>
               {apiConfigured ? "Live handbook search ready" : "Waiting for API configuration"}
             </Badge>
+          </div>
+
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Model</div>
+            {handbookModelOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => onModelChange(option.value)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                  selectedModel === option.value
+                    ? "border-primary/30 bg-primarySoft text-primary"
+                    : "border-border bg-panel text-muted hover:bg-panelMuted hover:text-foreground"
+                }`}
+                title={option.description}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
