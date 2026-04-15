@@ -8,17 +8,19 @@ import { Modal } from "./components/ui/modal";
 import {
   handbookPolicies,
   handbookModelOptions,
+  legacyDefaultSavedQueries,
   savedQueries as defaultSavedQueries,
   suggestedQuestions,
 } from "./data/mockRag";
 import { requestHandbookAnswer, getHandbookApiBaseUrl, isHandbookApiConfigured } from "./lib/handbook-api";
 import { formatClockTime } from "./lib/utils";
-import { AnswerMode, ChatMessage, HandbookApiResponse, HandbookChatTurn, HandbookModel, NavItem, RecentConversation, SourceLink, ThemeMode } from "./types";
+import { AnswerMode, ChatMessage, HandbookApiResponse, HandbookChatTurn, HandbookModel, LanguageMode, NavItem, RecentConversation, SourceLink, ThemeMode } from "./types";
 
 function App() {
   const recentStorageKey = "campus-live-recent-questions";
   const savedStorageKey = "campus-live-saved-queries";
   const themeStorageKey = "campus-live-theme";
+  const languageStorageKey = "campus-live-language";
   const modelStorageKey = "campus-live-model";
   const [activeNav, setActiveNav] = useState<NavItem>("Home");
   const [answerMode, setAnswerMode] = useState<AnswerMode>("concise");
@@ -30,6 +32,14 @@ function App() {
 
     const stored = window.localStorage.getItem(themeStorageKey);
     return stored === "dark" ? "dark" : "light";
+  });
+  const [languageMode, setLanguageMode] = useState<LanguageMode>(() => {
+    if (typeof window === "undefined") {
+      return "en";
+    }
+
+    const stored = window.localStorage.getItem(languageStorageKey);
+    return stored === "zh" ? "zh" : "en";
   });
   const [selectedModel, setSelectedModel] = useState<HandbookModel>(() => {
     if (typeof window === "undefined") {
@@ -86,9 +96,12 @@ function App() {
 
     try {
       const parsed = JSON.parse(stored);
-      return Array.isArray(parsed) && parsed.length
-        ? parsed.filter((item): item is string => typeof item === "string")
-        : defaultSavedQueries;
+      const normalized = Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+      const isLegacyDefaultSet =
+        normalized.length === legacyDefaultSavedQueries.length &&
+        normalized.every((item, index) => item === legacyDefaultSavedQueries[index]);
+
+      return normalized.length && !isLegacyDefaultSet ? normalized : defaultSavedQueries;
     } catch {
       return defaultSavedQueries;
     }
@@ -104,6 +117,22 @@ function App() {
 
   const apiConfigured = isHandbookApiConfigured();
   const apiBaseUrl = getHandbookApiBaseUrl();
+  const modalCopy =
+    languageMode === "zh"
+      ? {
+          sources: "来源",
+          liveLinks: "实时来源链接",
+          noSources: "这次回答没有返回可用的手册来源链接。",
+          notes: "引用说明",
+          notesBody: "这些链接会打开当前回答所使用的官方页面。",
+        }
+      : {
+          sources: "Sources",
+          liveLinks: "Live source links",
+          noSources: "No handbook source links were returned for this answer.",
+          notes: "Reference notes",
+          notesBody: "These links open the official pages used to support the current answer.",
+        };
 
   const latestAssistantMessageId = useMemo(
     () => [...messages].reverse().find((message) => message.role === "assistant")?.id,
@@ -141,6 +170,13 @@ function App() {
       document.documentElement.style.colorScheme = themeMode;
     }
   }, [themeMode]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(languageStorageKey, languageMode);
+      document.documentElement.lang = languageMode === "zh" ? "zh-CN" : "en";
+    }
+  }, [languageMode]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -340,7 +376,7 @@ function App() {
     );
 
     setSelectedSources({
-      title: "Sources",
+      title: modalCopy.sources,
       sources: uniqueSources,
     });
   }
@@ -393,6 +429,21 @@ function App() {
     setActiveNav("Saved Queries");
   }
 
+  function handleDeleteRecentConversation(conversationId: string) {
+    setRecentConversations((current) => current.filter((item) => item.id !== conversationId));
+    if (currentConversationId === conversationId) {
+      setMessages([]);
+      setCurrentConversationId(undefined);
+      setThreadResponseId(undefined);
+      setSelectedSources(null);
+      setActiveNav("Chat");
+    }
+  }
+
+  function handleDeleteSavedQuery(question: string) {
+    setSavedQueries((current) => current.filter((item) => item !== question));
+  }
+
   function handleModelChange(model: HandbookModel) {
     setSelectedModel(model);
     setThreadResponseId(undefined);
@@ -410,10 +461,13 @@ function App() {
             savedQueries={savedQueries}
             suggestedQuestions={suggestedQuestions}
             apiConfigured={apiConfigured}
+            languageMode={languageMode}
             onNavChange={setActiveNav}
             onSuggestedQuestion={handlePromptSelect}
             onRecentQuestionSelect={handleRecentQuestionSelect}
+            onDeleteRecentQuestion={handleDeleteRecentConversation}
             onSavedQuerySelect={handleSavedQuerySelect}
+            onDeleteSavedQuery={handleDeleteSavedQuery}
           />
         </aside>
 
@@ -434,18 +488,22 @@ function App() {
             handbookPolicies={handbookPolicies}
             selectedModel={selectedModel}
             chatSessionCount={chatSessionCount}
+            languageMode={languageMode}
             themeMode={themeMode}
             onInputChange={setInput}
             onSubmit={() => void runQuery(input)}
             onPromptSelect={handlePromptSelect}
             onRecentQuestionSelect={handleRecentQuestionSelect}
+            onDeleteRecentQuestion={handleDeleteRecentConversation}
             onSavedQuerySelect={handleSavedQuerySelect}
+            onDeleteSavedQuery={handleDeleteSavedQuery}
             onSaveCurrentQuery={handleSaveCurrentQuery}
             onRegenerate={regenerateLatestAnswer}
             onCopy={handleCopy}
             onViewSource={handleViewSource}
             onAnswerModeChange={setAnswerMode}
             onModelChange={handleModelChange}
+            onLanguageModeChange={setLanguageMode}
             onThemeModeChange={setThemeMode}
             onToggleCitations={() => setShowCitations((value) => !value)}
             onOpenSidebar={() => setSidebarOpen(true)}
@@ -470,10 +528,13 @@ function App() {
             savedQueries={savedQueries}
             suggestedQuestions={suggestedQuestions}
             apiConfigured={apiConfigured}
+            languageMode={languageMode}
             onNavChange={setActiveNav}
             onSuggestedQuestion={handlePromptSelect}
             onRecentQuestionSelect={handleRecentQuestionSelect}
+            onDeleteRecentQuestion={handleDeleteRecentConversation}
             onSavedQuerySelect={handleSavedQuerySelect}
+            onDeleteSavedQuery={handleDeleteSavedQuery}
           />
         </div>
       </aside>
@@ -481,13 +542,13 @@ function App() {
       <Modal
         open={Boolean(selectedSources)}
         onClose={() => setSelectedSources(null)}
-        title={selectedSources?.title ?? "Sources"}
+        title={selectedSources?.title ?? modalCopy.sources}
         subtitle={selectedSources?.subtitle}
       >
         {selectedSources?.sources.length ? (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge tone="success">Live source links</Badge>
+              <Badge tone="success">{modalCopy.liveLinks}</Badge>
             </div>
             <div className="space-y-3">
               {selectedSources.sources.map((source) => (
@@ -510,15 +571,15 @@ function App() {
         ) : (
           <div className="rounded-[1.5rem] bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
             <SearchX className="mx-auto mb-3" size={20} />
-            No handbook source links were returned for this answer.
+            {modalCopy.noSources}
           </div>
         )}
         <div className="mt-5 rounded-[1.4rem] bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-900/80">
           <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-amber-600">
             <Info size={14} />
-            Reference notes
+            {modalCopy.notes}
           </div>
-          These links open the official pages used to support the current answer.
+          {modalCopy.notesBody}
         </div>
       </Modal>
     </div>

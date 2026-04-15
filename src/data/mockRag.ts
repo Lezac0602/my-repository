@@ -42,7 +42,9 @@ export const quickActions: QuickAction[] = [
   },
 ];
 
-export const savedQueries = [
+export const savedQueries: string[] = [];
+
+export const legacyDefaultSavedQueries = [
   "What does the handbook say about confirmation of candidature?",
   "How is thesis examination arranged for RPg students?",
   "What are the attendance expectations for full-time students?",

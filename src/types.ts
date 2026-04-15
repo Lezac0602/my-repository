@@ -2,6 +2,7 @@ export type NavItem = "Home" | "Chat" | "Recent Questions" | "Saved Queries" | "
 
 export type AnswerMode = "concise" | "detailed";
 export type ThemeMode = "light" | "dark";
+export type LanguageMode = "en" | "zh";
 export type HandbookModel = "gpt-5.4" | "gpt-5.4-mini" | "gpt-5.4-nano";
 
 export type ChatRole = "user" | "assistant";
