@@ -143,6 +143,43 @@ function uniqueLinks(items) {
   );
 }
 
+function normalizeHandbookLink(item) {
+  if (!item || typeof item.url !== "string" || !item.url.startsWith(handbookPrefix)) {
+    return null;
+  }
+
+  try {
+    const sourceUrl = new URL(item.url);
+    const prefixUrl = new URL(handbookPrefix);
+    const prefixPath = prefixUrl.pathname.replace(/\/+$/, "");
+    const pathname = sourceUrl.pathname.replace(/\/+$/, "");
+
+    if (!pathname.startsWith(prefixPath)) {
+      return null;
+    }
+
+    const remainder = pathname.slice(prefixPath.length).replace(/^\/+/, "");
+    if (!remainder) {
+      return {
+        title: "RPg Handbook Home",
+        url: handbookPrefix,
+      };
+    }
+
+    const firstSegment = remainder.split("/")[0];
+    const sectionMatch = firstSegment.match(/^section(\d+)/i);
+    const normalizedSegment = sectionMatch ? `section${sectionMatch[1]}` : firstSegment;
+    const normalizedUrl = new URL(`${prefixPath}/${normalizedSegment}`, sourceUrl.origin).toString();
+
+    return {
+      title: sectionMatch ? `RPg Handbook Section ${sectionMatch[1]}` : item.title || normalizedSegment,
+      url: normalizedUrl,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function collectLinksDeep(value, results = []) {
   if (!value) {
     return results;
@@ -181,7 +218,11 @@ function collectLinksDeep(value, results = []) {
 }
 
 function filterHandbookLinks(items) {
-  return uniqueLinks(items).filter((item) => item.url.startsWith(handbookPrefix));
+  return uniqueLinks(
+    items
+      .map((item) => normalizeHandbookLink(item))
+      .filter(Boolean),
+  );
 }
 
 function parseStructuredAnswer(text) {

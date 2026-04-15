@@ -12,14 +12,23 @@ import {
 } from "./data/mockRag";
 import { requestHandbookAnswer, getHandbookApiBaseUrl, isHandbookApiConfigured } from "./lib/handbook-api";
 import { formatClockTime } from "./lib/utils";
-import { AnswerMode, ChatMessage, HandbookApiResponse, HandbookChatTurn, NavItem, RecentConversation, SourceLink } from "./types";
+import { AnswerMode, ChatMessage, HandbookApiResponse, HandbookChatTurn, NavItem, RecentConversation, SourceLink, ThemeMode } from "./types";
 
 function App() {
   const recentStorageKey = "campus-live-recent-questions";
   const savedStorageKey = "campus-live-saved-queries";
+  const themeStorageKey = "campus-live-theme";
   const [activeNav, setActiveNav] = useState<NavItem>("Home");
   const [answerMode, setAnswerMode] = useState<AnswerMode>("concise");
   const [showCitations, setShowCitations] = useState(true);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    if (typeof window === "undefined") {
+      return "light";
+    }
+
+    const stored = window.localStorage.getItem(themeStorageKey);
+    return stored === "dark" ? "dark" : "light";
+  });
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -113,6 +122,14 @@ function App() {
       window.localStorage.setItem(savedStorageKey, JSON.stringify(savedQueries));
     }
   }, [savedQueries]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(themeStorageKey, themeMode);
+      document.documentElement.classList.toggle("theme-dark", themeMode === "dark");
+      document.documentElement.style.colorScheme = themeMode;
+    }
+  }, [themeMode]);
 
   function buildHistory(messageList: ChatMessage[]): HandbookChatTurn[] {
     return messageList.map((message) => ({
@@ -358,7 +375,7 @@ function App() {
   const sidebarDrawerClasses = "fixed inset-y-0 left-0 z-40 w-[88vw] max-w-sm overflow-y-auto bg-transparent p-4 lg:hidden";
 
   return (
-    <div className="min-h-screen px-4 py-4 lg:px-6 lg:py-6">
+    <div className={`min-h-screen px-4 py-4 transition-colors lg:px-6 lg:py-6 ${themeMode === "dark" ? "theme-dark" : ""}`}>
       <div className="mx-auto grid min-h-[calc(100vh-2rem)] max-w-[1440px] gap-4 lg:grid-cols-[300px,minmax(0,1fr)]">
         <aside className="hidden lg:block">
           <Sidebar
@@ -391,6 +408,7 @@ function App() {
             apiBaseUrl={apiBaseUrl}
             handbookPolicies={handbookPolicies}
             chatSessionCount={chatSessionCount}
+            themeMode={themeMode}
             onInputChange={setInput}
             onSubmit={() => void runQuery(input)}
             onPromptSelect={handlePromptSelect}
@@ -401,6 +419,7 @@ function App() {
             onCopy={handleCopy}
             onViewSource={handleViewSource}
             onAnswerModeChange={setAnswerMode}
+            onThemeModeChange={setThemeMode}
             onToggleCitations={() => setShowCitations((value) => !value)}
             onOpenSidebar={() => setSidebarOpen(true)}
             onNewChat={handleNewChat}

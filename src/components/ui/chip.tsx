@@ -12,7 +12,7 @@ export function Chip({ className, active, ...props }: ChipProps) {
         "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
         active
           ? "border-primary/20 bg-primarySoft text-primary"
-          : "border-slate-200 bg-white/90 text-slate-600 hover:border-slate-300 hover:bg-white",
+          : "border-border bg-panel text-muted hover:bg-panelMuted hover:text-foreground",
         className,
       )}
       {...props}

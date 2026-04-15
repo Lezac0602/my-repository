@@ -19,7 +19,7 @@ export function SegmentedControl<T extends string>({
   className,
 }: SegmentedControlProps<T>) {
   return (
-    <div className={cn("inline-flex rounded-2xl bg-slate-100/90 p-1", className)}>
+    <div className={cn("inline-flex rounded-2xl bg-panelMuted p-1", className)}>
       {options.map((option) => (
         <button
           key={option.value}
@@ -27,7 +27,7 @@ export function SegmentedControl<T extends string>({
           onClick={() => onChange(option.value)}
           className={cn(
             "rounded-xl px-3 py-2 text-xs font-semibold transition",
-            value === option.value ? "bg-white text-slate-900 shadow-soft" : "text-slate-500 hover:text-slate-700",
+            value === option.value ? "bg-panel text-foreground shadow-soft" : "text-muted hover:text-foreground",
           )}
         >
           {option.label}

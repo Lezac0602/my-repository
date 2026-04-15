@@ -1,6 +1,7 @@
 export type NavItem = "Home" | "Chat" | "Recent Questions" | "Saved Queries" | "Settings";
 
 export type AnswerMode = "concise" | "detailed";
+export type ThemeMode = "light" | "dark";
 
 export type ChatRole = "user" | "assistant";
 

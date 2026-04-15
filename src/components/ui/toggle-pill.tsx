@@ -13,7 +13,7 @@ export function TogglePill({ label, active, onClick }: TogglePillProps) {
       onClick={onClick}
       className={cn(
         "rounded-full px-3 py-1.5 text-xs font-semibold transition",
-        active ? "bg-slate-900 text-white" : "bg-white/90 text-slate-500 hover:text-slate-700",
+        active ? "bg-slate-900 text-white" : "bg-panel text-muted hover:bg-panelMuted hover:text-foreground",
       )}
     >
       {label}

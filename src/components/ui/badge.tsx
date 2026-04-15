@@ -6,7 +6,7 @@ interface BadgeProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const toneClasses = {
-  neutral: "bg-slate-100 text-slate-600",
+  neutral: "bg-panelMuted text-muted",
   primary: "bg-primarySoft text-primary",
   success: "bg-emerald-50 text-success",
   warning: "bg-amber-50 text-warning",

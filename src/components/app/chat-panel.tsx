@@ -14,7 +14,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { exampleChips, quickActions } from "../../data/mockRag";
-import { AnswerMode, ChatMessage, NavItem, RecentConversation } from "../../types";
+import { AnswerMode, ChatMessage, NavItem, RecentConversation, ThemeMode } from "../../types";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
@@ -39,6 +39,7 @@ interface ChatPanelProps {
   apiBaseUrl: string;
   handbookPolicies: string[];
   chatSessionCount: number;
+  themeMode: ThemeMode;
   onInputChange: (value: string) => void;
   onSubmit: () => void;
   onPromptSelect: (question: string) => void;
@@ -49,6 +50,7 @@ interface ChatPanelProps {
   onCopy: (messageId: string) => void;
   onViewSource: (messageId: string) => void;
   onAnswerModeChange: (mode: AnswerMode) => void;
+  onThemeModeChange: (mode: ThemeMode) => void;
   onToggleCitations: () => void;
   onOpenSidebar: () => void;
   onNewChat: () => void;
@@ -69,6 +71,7 @@ export function ChatPanel({
   apiBaseUrl,
   handbookPolicies,
   chatSessionCount,
+  themeMode,
   onInputChange,
   onSubmit,
   onPromptSelect,
@@ -79,6 +82,7 @@ export function ChatPanel({
   onCopy,
   onViewSource,
   onAnswerModeChange,
+  onThemeModeChange,
   onToggleCitations,
   onOpenSidebar,
   onNewChat,
@@ -230,6 +234,26 @@ export function ChatPanel({
               <div className="font-semibold text-slate-800">API base</div>
               <div className="mt-1 break-all">{apiConfigured ? apiBaseUrl : "No API base configured"}</div>
             </div>
+            <div className="mt-4 text-sm text-slate-600">
+              <div className="font-semibold text-slate-800">Search model</div>
+              <div className="mt-1">GPT-5 with OpenAI Responses API web search</div>
+            </div>
+          </Card>
+          <Card muted className="p-4">
+            <div className="text-sm font-semibold text-slate-800">Theme</div>
+            <div className="mt-3">
+              <SegmentedControl
+                options={[
+                  { label: "Light", value: "light" },
+                  { label: "Dark", value: "dark" },
+                ]}
+                value={themeMode}
+                onChange={onThemeModeChange}
+              />
+            </div>
+            <div className="mt-4 text-sm leading-7 text-slate-500">
+              Switch between a bright academic dashboard and a darker presentation mode for demos.
+            </div>
           </Card>
           <Card muted className="p-4">
             <div className="text-sm font-semibold text-slate-800">Client-side features</div>
@@ -243,6 +267,13 @@ export function ChatPanel({
             <div className="mt-4 text-sm leading-7 text-slate-500">
               Recent conversations and saved queries are stored locally in this browser. Recent items reopen past threads,
               while saved queries reload reusable prompts into the input.
+            </div>
+            <div className="mt-4 rounded-[1.25rem] bg-panel px-4 py-4 text-sm leading-7 text-slate-600">
+              <div className="font-semibold text-slate-800">Answer modes</div>
+              <div className="mt-2">
+                Concise Answer keeps the reply shorter with 3 to 4 key bullets. Detailed Answer asks the backend to give
+                a fuller explanation with 4 to 6 bullets when the handbook supports it.
+              </div>
             </div>
           </Card>
         </div>
