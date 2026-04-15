@@ -5,25 +5,30 @@ import {
   GraduationCap,
   History,
   MessageSquareText,
+  Plus,
   Sparkles,
   UserRound,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
-import {
-  conversationPresets,
-  mockStudent,
-  navigationItems,
-  savedQueries,
-  suggestedQuestions,
-} from "../../data/mockRag";
+import { handbookRootUrl, mockStudent, navigationItems } from "../../data/mockRag";
 import { NavItem } from "../../types";
 import { cn } from "../../lib/utils";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 
 interface SidebarProps {
   activeNav: NavItem;
+  recentQuestions: string[];
+  savedQueries: string[];
+  suggestedQuestions: string[];
+  apiConfigured: boolean;
   onNavChange: (item: NavItem) => void;
   onSuggestedQuestion: (question: string) => void;
-  onLoadConversation: (conversationId: string) => void;
+  onRecentQuestionSelect: (question: string) => void;
+  onSavedQuerySelect: (question: string) => void;
+  onNewChat: () => void;
 }
 
 const navIcons = {
@@ -35,9 +40,15 @@ const navIcons = {
 
 export function Sidebar({
   activeNav,
+  recentQuestions,
+  savedQueries,
+  suggestedQuestions,
+  apiConfigured,
   onNavChange,
   onSuggestedQuestion,
-  onLoadConversation,
+  onRecentQuestionSelect,
+  onSavedQuerySelect,
+  onNewChat,
 }: SidebarProps) {
   return (
     <div className="flex h-full flex-col gap-4">
@@ -50,9 +61,31 @@ export function Sidebar({
             <h1 className="font-display text-2xl leading-tight text-slate-900">
               PolyU Campus Academic Assistant
             </h1>
-            <p className="mt-1 text-sm text-slate-500">RAG-powered academic support</p>
+            <p className="mt-1 text-sm text-slate-500">Live RPg handbook support</p>
           </div>
         </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <Badge tone={apiConfigured ? "success" : "warning"}>
+            {apiConfigured ? (
+              <>
+                <Wifi size={12} />
+                Live search enabled
+              </>
+            ) : (
+              <>
+                <WifiOff size={12} />
+                Backend setup needed
+              </>
+            )}
+          </Badge>
+          <Badge tone="primary">Handbook-only scope</Badge>
+        </div>
+
+        <Button className="mt-5 w-full" onClick={onNewChat}>
+          <Plus size={16} />
+          New Chat
+        </Button>
 
         <div className="mt-6 space-y-2">
           {navigationItems.map((item) => {
@@ -100,18 +133,18 @@ export function Sidebar({
       <Card muted className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <History size={16} className="text-primary" />
-          <h2 className="section-title">Recent Conversations</h2>
+          <h2 className="section-title">Recent Questions</h2>
         </div>
         <div className="space-y-2">
-          {conversationPresets.map((preset) => (
+          {(recentQuestions.length ? recentQuestions : ["No live questions yet. Start a new chat to build a recent list."]).map((question) => (
             <button
-              key={preset.id}
+              key={question}
               type="button"
-              onClick={() => onLoadConversation(preset.id)}
-              className="w-full rounded-2xl border border-transparent bg-white/75 px-4 py-3 text-left transition hover:border-slate-200 hover:bg-white"
+              onClick={() => recentQuestions.length && onRecentQuestionSelect(question)}
+              className="w-full rounded-2xl border border-transparent bg-white/75 px-4 py-3 text-left transition hover:border-slate-200 hover:bg-white disabled:cursor-default"
+              disabled={!recentQuestions.length}
             >
-              <div className="text-sm font-semibold text-slate-700">{preset.title}</div>
-              <div className="mt-1 text-xs text-slate-500">{preset.subtitle}</div>
+              <div className="text-sm font-semibold text-slate-700">{question}</div>
             </button>
           ))}
         </div>
@@ -121,9 +154,14 @@ export function Sidebar({
           </div>
           <div className="space-y-2">
             {savedQueries.map((query) => (
-              <div key={query} className="rounded-2xl bg-white/75 px-4 py-3 text-sm text-slate-600">
+              <button
+                key={query}
+                type="button"
+                onClick={() => onSavedQuerySelect(query)}
+                className="w-full rounded-2xl bg-white/75 px-4 py-3 text-left text-sm text-slate-600 transition hover:bg-white"
+              >
                 {query}
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -141,13 +179,17 @@ export function Sidebar({
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
           <div className="rounded-2xl bg-white/80 px-3 py-3">
-            <div className="text-xs text-slate-400">Year</div>
+            <div className="text-xs text-slate-400">Status</div>
             <div className="mt-1 font-semibold text-slate-700">{mockStudent.year}</div>
           </div>
           <div className="rounded-2xl bg-white/80 px-3 py-3">
-            <div className="text-xs text-slate-400">Student ID</div>
+            <div className="text-xs text-slate-400">Reference ID</div>
             <div className="mt-1 font-semibold text-slate-700">{mockStudent.studentId}</div>
           </div>
+        </div>
+        <div className="mt-4 rounded-2xl bg-white/80 px-4 py-3 text-xs leading-6 text-slate-500">
+          Handbook scope:
+          <div className="mt-1 break-all font-medium text-slate-700">{handbookRootUrl}</div>
         </div>
       </Card>
     </div>

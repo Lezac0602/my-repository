@@ -1,93 +1,109 @@
 # Campus Academic Assistant
 
-A polished frontend-only demo for a university-focused academic assistant UI built with React, TypeScript, Tailwind CSS, and mock data.
+A React + Tailwind frontend for a live PolyU RPg Handbook QA demo.
+
+The frontend stays on GitHub Pages, while the protected OpenAI call is handled by a separate Vercel backend in [`backend/`](c:/Users/Zach/Desktop/Code/PolyU%20Campus/backend).
+
+## What This Version Does
+
+- Runs a live handbook QA flow from the main chat UI
+- Uses the OpenAI Responses API with `web_search`
+- Restricts answers to the PolyU Graduate School RPg Handbook scope
+- Shows structured answers with:
+  - summary
+  - key details
+  - caution
+  - clickable handbook citations
+- Supports `New Chat`, `Concise / Detailed`, `Show / Hide citations`, `Regenerate Answer`, and `Copy Answer`
 
 Important:
-This project is a frontend demo only. It does not include a backend, database, or real backend retrieval service. All answers and assistant states are simulated with local mock data. The product experience demonstrated in the UI is for the "PolyU Campus Academic Assistant," while the repository itself uses the more generic "Campus" naming.
+- The browser never talks directly to OpenAI
+- The frontend needs a public backend URL in `VITE_HANDBOOK_API_BASE_URL`
+- The backend needs `OPENAI_API_KEY`
 
-## What This Demo Includes
+## Project Layout
 
-- A polished academic assistant dashboard
-- Left sidebar with navigation, suggested questions, recent conversations, saved queries, and mock student profile
-- Main chat interface with structured assistant answers
-- Mock conversations and realistic academic-policy content
-- Interactive demo behaviors such as:
-  - suggested question click-to-run
-  - concise/detailed answer toggle
-  - show/hide citations toggle
-  - regenerate answer
-  - copy answer
-  - source excerpt modal
-  - no-results state
-
-## Requirements
-
-You need Node.js installed to run this project locally.
-
-Recommended:
-- Node.js 18 or newer
-- npm 9 or newer
-
-To check whether Node.js is installed, run:
-
-```powershell
-node -v
-npm -v
+```text
+.
+|-- src/                 Frontend for GitHub Pages
+|-- backend/             Vercel serverless API for handbook chat
+|-- .github/workflows/   GitHub Pages deploy workflow
 ```
 
-If those commands fail, install Node.js first from the official website:
+## Frontend Local Development
 
-https://nodejs.org/
-
-## How To Open It
-
-1. Open a terminal in the project folder:
+1. Install frontend dependencies:
 
 ```powershell
 cd "c:\Users\Zach\Desktop\Code\PolyU Campus"
-```
-
-2. Install dependencies:
-
-```powershell
 npm install
 ```
 
-3. Start the development server:
+2. Create a frontend env file:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+3. Set your deployed or local backend origin in `.env.local`:
+
+```text
+VITE_HANDBOOK_API_BASE_URL=https://your-vercel-project.vercel.app
+```
+
+4. Start the frontend:
 
 ```powershell
 npm run dev
 ```
 
-4. Open the local URL shown in the terminal.
+## Backend Setup For Vercel
 
-Usually Vite will print something like:
+1. Go into the backend folder:
+
+```powershell
+cd "c:\Users\Zach\Desktop\Code\PolyU Campus\backend"
+```
+
+2. Install backend dependencies:
+
+```powershell
+npm install
+```
+
+3. Create backend env values from [`backend/.env.example`](c:/Users/Zach/Desktop/Code/PolyU%20Campus/backend/.env.example):
 
 ```text
-Local:   http://localhost:5173/
+OPENAI_API_KEY=...
+HANDBOOK_URL_PREFIX=https://www.polyu.edu.hk/gs/rpghandbook/
+ALLOWED_ORIGINS=http://localhost:5173,https://lezac0602.github.io
+UPSTASH_REDIS_REST_URL=...
+UPSTASH_REDIS_REST_TOKEN=...
 ```
 
-Open that address in your browser.
+4. Deploy `backend/` as a separate Vercel project.
 
-## How To Build A Production Version
+The public API endpoint will be:
 
-```powershell
-npm run build
+```text
+https://your-vercel-project.vercel.app/api/handbook-chat
 ```
 
-This creates a production build in the `dist/` folder.
+## GitHub Pages Frontend Deploy
 
-If you want to preview the built app locally:
+The GitHub Pages workflow now reads this repository variable:
 
-```powershell
-npm run preview
+```text
+VITE_HANDBOOK_API_BASE_URL
 ```
 
-Then open the preview URL shown in the terminal.
+Set that variable in GitHub to your deployed Vercel origin, for example:
 
-## How To Publish The Latest Version To GitHub Pages
+```text
+https://your-vercel-project.vercel.app
+```
 
-This repository is already configured so that every push to `main` automatically rebuilds and redeploys the website to GitHub Pages.
+Then every push to `main` rebuilds the frontend against that live backend.
 
 Public site:
 
@@ -95,77 +111,30 @@ Public site:
 https://lezac0602.github.io/my-repository/
 ```
 
-If you want to build, commit, push, and trigger the live site update in one command, run:
+## One-Command Publish For The Frontend
+
+After frontend changes, you can still publish the GitHub Pages site with:
 
 ```powershell
 npm run publish:github
 ```
 
-You can also provide a custom commit message:
+Or with a custom commit message:
 
 ```powershell
-npm run publish:github --message="Update campus assistant layout"
+npm run publish:github --message="Connect handbook chat to live backend"
 ```
 
-What this script does:
+This command:
 
-- runs `npm run build`
-- stages your local changes
-- creates a git commit if there are file changes
-- pushes to `origin/main`
-- lets GitHub Actions redeploy the Pages site automatically
-
-After the push, GitHub usually updates the site within about 1 to 2 minutes.
-
-## Project Structure
-
-```text
-.
-|-- index.html
-|-- package.json
-|-- src
-|   |-- App.tsx
-|   |-- index.css
-|   |-- main.tsx
-|   |-- types.ts
-|   |-- components
-|   |   |-- app
-|   |   |-- ui
-|   |-- data
-|   |   |-- mockRag.ts
-|   |-- lib
-|       |-- utils.ts
-```
-
-## Main Files
-
-- `src/App.tsx`
-  - top-level app state and overall layout
-- `src/data/mockRag.ts`
-  - mock documents, chunks, scenarios, and preset conversations
-- `src/components/app/`
-  - dashboard panels
-- `src/components/ui/`
-  - reusable UI primitives
-- `src/index.css`
-  - theme tokens and global styling
-
-## Demo Usage
-
-After opening the app, you can try:
-
-- clicking a suggested question in the left sidebar
-- using the quick action cards on the welcome screen
-- asking questions such as:
-  - `What are the graduation requirements for my programme?`
-  - `When is the add/drop deadline?`
-  - `What is the assessment breakdown for this subject?`
-  - `Summarize the academic integrity policy.`
-- switching between `Concise Answer` and `Detailed Answer`
-- toggling citations on and off
-- opening retrieved evidence cards to inspect the source text
+- runs the frontend build
+- stages changes
+- commits them
+- pushes to `main`
+- triggers the GitHub Pages workflow
 
 ## Notes
 
-- The content is realistic mock content inspired by academic-support scenarios, but it is not official PolyU policy.
-- If you want, this frontend can be connected later to a real backend or RAG API.
+- This implementation is scoped to the PolyU Graduate School RPg Handbook URL prefix.
+- The backend also filters returned URLs so unsupported PolyU pages are not accepted as valid final sources.
+- Upstash rate limiting is included for basic public-demo protection.

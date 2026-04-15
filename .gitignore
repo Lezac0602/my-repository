@@ -3,6 +3,11 @@ dist/
 .DS_Store
 *.log
 *.tsbuildinfo
+.env
+.env.local
+.env.*
+!.env.example
+!backend/.env.example
 vite.config.js
 vite.config.d.ts
 tailwind.config.js

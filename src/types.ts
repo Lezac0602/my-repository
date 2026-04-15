@@ -1,85 +1,56 @@
 export type NavItem = "Chat" | "Recent Questions" | "Saved Queries" | "Settings";
 
-export type DocumentCategory =
-  | "Academic Regulations"
-  | "Programme Handbook"
-  | "Course Syllabus"
-  | "Graduation Requirements"
-  | "Deadlines"
-  | "FAQ";
-
-export type DocumentType = "Policy" | "Handbook" | "Subject Description" | "FAQ" | "Timeline";
-
 export type AnswerMode = "concise" | "detailed";
 
-export type QueryIntent = "policy" | "course" | "deadline" | "graduation" | "compliance";
+export type ChatRole = "user" | "assistant";
 
-export type PipelineStepStatus = "pending" | "active" | "complete" | "failed";
+export type HandbookResponseStatus = "ok" | "no_handbook_source" | "error";
 
-export interface DocumentRecord {
-  id: string;
+export interface SourceLink {
   title: string;
-  type: DocumentType;
-  category: DocumentCategory;
-  updatedAt: string;
-  coverage: number;
-  isTopReferenced: boolean;
+  url: string;
 }
 
-export interface ChunkRecord {
-  id: string;
-  documentId: string;
-  sectionLabel: string;
-  pageLabel: string;
-  preview: string;
-  fullText: string;
-  keywords: string[];
-  relevance: number;
+export interface HandbookChatTurn {
+  role: ChatRole;
+  content: string;
 }
 
-export interface AnswerVariant {
+export interface HandbookApiRequest {
+  question: string;
+  history: HandbookChatTurn[];
   mode: AnswerMode;
-  summary: string;
+  previousResponseId?: string;
+}
+
+export interface HandbookApiResponse {
+  answer: string;
   bullets: string[];
   caution: string;
-  citations: string[];
-  reliability: "High" | "Medium" | "Low";
-}
-
-export interface PipelineStep {
-  id: string;
-  label: string;
-  description: string;
-}
-
-export interface MockQueryScenario {
-  id: string;
-  question: string;
-  intent: QueryIntent;
-  scope: string;
-  keywords: string[];
-  pipeline: PipelineStep[];
-  evidenceChunkIds: string[];
-  answers: {
-    concise: AnswerVariant[];
-    detailed: AnswerVariant[];
-  };
-  noResults?: boolean;
+  citations: SourceLink[];
+  sourcePages: SourceLink[];
+  previousResponseId?: string;
+  status: HandbookResponseStatus;
+  message?: string;
 }
 
 export interface ChatMessage {
   id: string;
-  role: "user" | "assistant";
-  text?: string;
+  role: ChatRole;
+  content: string;
   timestamp: string;
-  scenarioId?: string;
-  variantIndex?: number;
+  response?: HandbookApiResponse;
 }
 
-export interface ConversationPreset {
-  id: string;
+export interface QuickAction {
   title: string;
-  subtitle: string;
-  scenarioId: string;
-  messages: ChatMessage[];
+  description: string;
+  prompt: string;
+}
+
+export interface MockStudent {
+  name: string;
+  programme: string;
+  year: string;
+  studentId: string;
 }

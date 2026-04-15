@@ -1,0 +1,13 @@
+{
+  "name": "campus-handbook-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@upstash/ratelimit": "^2.0.5",
+    "@upstash/redis": "^1.34.6",
+    "openai": "^5.13.1"
+  }
+}

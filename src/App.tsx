@@ -1,50 +1,49 @@
 import { useEffect, useMemo, useState } from "react";
-import { Info, SearchX, X } from "lucide-react";
+import { ExternalLink, Info, SearchX, X } from "lucide-react";
 import { ChatPanel } from "./components/app/chat-panel";
 import { Sidebar } from "./components/app/sidebar";
 import { Badge } from "./components/ui/badge";
 import { Button } from "./components/ui/button";
-import { Chip } from "./components/ui/chip";
 import { Modal } from "./components/ui/modal";
 import {
-  chunks,
-  conversationPresets,
-  getDocumentById,
-  getScenarioById,
-  getScenarioForQuestion,
+  handbookPolicies,
+  handbookRootUrl,
+  savedQueries,
+  suggestedQuestions,
 } from "./data/mockRag";
-import { delay, formatClockTime, highlightText } from "./lib/utils";
-import { AnswerMode, AnswerVariant, ChatMessage, NavItem } from "./types";
+import { requestHandbookAnswer, getHandbookApiBaseUrl, isHandbookApiConfigured } from "./lib/handbook-api";
+import { formatClockTime } from "./lib/utils";
+import { AnswerMode, ChatMessage, HandbookApiResponse, HandbookChatTurn, NavItem, SourceLink } from "./types";
 
 function App() {
   const [activeNav, setActiveNav] = useState<NavItem>("Chat");
   const [answerMode, setAnswerMode] = useState<AnswerMode>("concise");
   const [showCitations, setShowCitations] = useState(true);
-  const [scope, setScope] = useState("All documents");
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [currentScenarioId, setCurrentScenarioId] = useState<string>();
   const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [recentQuestions, setRecentQuestions] = useState<string[]>([]);
+  const [selectedSources, setSelectedSources] = useState<{
+    title: string;
+    subtitle?: string;
+    sources: SourceLink[];
+  } | null>(null);
+  const [threadResponseId, setThreadResponseId] = useState<string>();
 
-  const currentScenario = useMemo(() => getScenarioById(currentScenarioId), [currentScenarioId]);
+  const apiConfigured = isHandbookApiConfigured();
+  const apiBaseUrl = getHandbookApiBaseUrl();
 
-  const latestAssistantMessage = useMemo(
-    () => [...messages].reverse().find((message) => message.role === "assistant"),
+  const latestAssistantMessageId = useMemo(
+    () => [...messages].reverse().find((message) => message.role === "assistant")?.id,
     [messages],
-  );
-
-  const selectedChunk = useMemo(
-    () => chunks.find((chunk) => chunk.id === selectedChunkId),
-    [selectedChunkId],
   );
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setSelectedChunkId(null);
+        setSelectedSources(null);
         setSidebarOpen(false);
       }
     }
@@ -53,124 +52,120 @@ function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  function resolveAnswerVariant(message: ChatMessage, mode: AnswerMode): AnswerVariant | undefined {
-    const scenario = getScenarioById(message.scenarioId);
-    if (!scenario) {
-      return undefined;
-    }
-
-    const variants = scenario.answers[mode];
-    const variantIndex = message.variantIndex ?? 0;
-    return variants[variantIndex % variants.length];
+  function buildHistory(messageList: ChatMessage[]): HandbookChatTurn[] {
+    return messageList.map((message) => ({
+      role: message.role,
+      content: message.role === "assistant" ? message.response?.answer || message.content : message.content,
+    }));
   }
 
-  function resolveScope(message: ChatMessage): string | undefined {
-    return getScenarioById(message.scenarioId)?.scope;
+  function upsertRecentQuestion(question: string) {
+    setRecentQuestions((current) => [question, ...current.filter((item) => item !== question)].slice(0, 6));
+  }
+
+  function createAssistantMessage(response: HandbookApiResponse): ChatMessage {
+    return {
+      id: `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      role: "assistant",
+      content: response.answer || response.message || "No handbook-supported answer was returned.",
+      timestamp: formatClockTime(new Date()),
+      response,
+    };
   }
 
   async function runQuery(question: string) {
     const trimmed = question.trim();
-
     if (!trimmed || isGenerating) {
       return;
     }
 
-    const scenario = getScenarioForQuestion(trimmed);
+    const history = buildHistory(messages);
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       role: "user",
-      text: trimmed,
+      content: trimmed,
       timestamp: formatClockTime(new Date()),
     };
 
     setSidebarOpen(false);
     setActiveNav("Chat");
     setInput(trimmed);
-    setCurrentScenarioId(scenario.id);
-    setMessages((currentMessages) => [...currentMessages, userMessage]);
+    setMessages((current) => [...current, userMessage]);
+    upsertRecentQuestion(trimmed);
     setIsGenerating(true);
 
-    const stepsToAnimate = scenario.noResults ? 2 : scenario.pipeline.length;
-    for (let index = 0; index < stepsToAnimate; index += 1) {
-      await delay(280);
-    }
+    const response = await requestHandbookAnswer({
+      question: trimmed,
+      history,
+      mode: answerMode,
+      previousResponseId: threadResponseId,
+    });
 
-    await delay(220);
-
-    const assistantMessage: ChatMessage = {
-      id: `assistant-${Date.now()}`,
-      role: "assistant",
-      timestamp: formatClockTime(new Date()),
-      scenarioId: scenario.id,
-      variantIndex: 0,
-    };
-
-    setMessages((currentMessages) => [...currentMessages, assistantMessage]);
+    setMessages((current) => [...current, createAssistantMessage(response)]);
+    setThreadResponseId(response.previousResponseId);
     setIsGenerating(false);
     setInput("");
   }
 
-  function handleSubmit() {
-    void runQuery(input);
-  }
-
-  function handlePromptSelect(prompt: string) {
-    setInput(prompt);
-    void runQuery(prompt);
-  }
-
-  function handleLoadConversation(conversationId: string) {
-    const preset = conversationPresets.find((item) => item.id === conversationId);
-    if (!preset) {
+  async function regenerateLatestAnswer(messageId: string) {
+    if (isGenerating || messageId !== latestAssistantMessageId) {
       return;
     }
 
-    setMessages(preset.messages);
-    setCurrentScenarioId(preset.scenarioId);
-    setActiveNav("Chat");
-    setSidebarOpen(false);
-  }
+    const assistantIndex = messages.findIndex((message) => message.id === messageId);
+    if (assistantIndex <= 0) {
+      return;
+    }
 
-  function handleRegenerate(messageId: string) {
-    setMessages((currentMessages) =>
-      currentMessages.map((message) => {
-        if (message.id !== messageId || message.role !== "assistant") {
-          return message;
-        }
+    const userIndex = [...messages]
+      .slice(0, assistantIndex)
+      .map((message, index) => ({ message, index }))
+      .reverse()
+      .find((entry) => entry.message.role === "user")?.index;
 
-        const scenario = getScenarioById(message.scenarioId);
-        if (!scenario) {
-          return message;
-        }
+    if (userIndex === undefined) {
+      return;
+    }
 
-        const length = scenario.answers[answerMode].length;
-        return {
-          ...message,
-          variantIndex: ((message.variantIndex ?? 0) + 1) % length,
-        };
-      }),
+    const question = messages[userIndex]?.content.trim();
+    if (!question) {
+      return;
+    }
+
+    const history = buildHistory(messages.slice(0, userIndex));
+    setIsGenerating(true);
+
+    const response = await requestHandbookAnswer({
+      question,
+      history,
+      mode: answerMode,
+    });
+
+    setMessages((current) =>
+      current.map((message) => (message.id === messageId ? { ...createAssistantMessage(response), id: messageId } : message)),
     );
+    setThreadResponseId(response.previousResponseId);
+    setIsGenerating(false);
   }
 
   async function handleCopy(messageId: string) {
     const message = messages.find((item) => item.id === messageId);
-    if (!message) {
-      return;
-    }
+    const response = message?.response;
 
-    const answer = resolveAnswerVariant(message, answerMode);
-    if (!answer) {
+    if (!message || !response) {
       return;
     }
 
     const text = [
-      `Summary: ${answer.summary}`,
+      `Summary: ${response.answer || response.message || "No answer returned."}`,
       "",
       "Key details:",
-      ...answer.bullets.map((bullet) => `- ${bullet}`),
+      ...(response.bullets.length ? response.bullets.map((bullet) => `- ${bullet}`) : ["- No handbook-supported bullet points returned."]),
       "",
-      `Caution: ${answer.caution}`,
-      ...(answer.citations.length ? ["", "Sources:", ...answer.citations.map((citation) => `- ${citation}`)] : []),
+      `Caution: ${response.caution || "Always confirm the latest handbook wording on the official PolyU page."}`,
+      ...(response.citations.length
+        ? ["", "Sources:", ...response.citations.map((citation) => `- ${citation.title}: ${citation.url}`)]
+        : []),
     ].join("\n");
 
     try {
@@ -183,12 +178,34 @@ function App() {
   }
 
   function handleViewSource(messageId: string) {
-    const message = messages.find((item) => item.id === messageId);
-    const scenario = getScenarioById(message?.scenarioId);
-    const firstChunkId = scenario?.evidenceChunkIds[0];
-    if (firstChunkId) {
-      setSelectedChunkId(firstChunkId);
+    const response = messages.find((item) => item.id === messageId)?.response;
+    if (!response) {
+      return;
     }
+
+    const uniqueSources = [...response.citations, ...response.sourcePages].filter(
+      (source, index, list) => list.findIndex((item) => item.url === source.url) === index,
+    );
+
+    setSelectedSources({
+      title: "Handbook Sources",
+      subtitle: handbookRootUrl,
+      sources: uniqueSources,
+    });
+  }
+
+  function handleNewChat() {
+    setActiveNav("Chat");
+    setMessages([]);
+    setInput("");
+    setThreadResponseId(undefined);
+    setSelectedSources(null);
+    setSidebarOpen(false);
+  }
+
+  function handlePromptSelect(prompt: string) {
+    setInput(prompt);
+    void runQuery(prompt);
   }
 
   const sidebarDrawerClasses = "fixed inset-y-0 left-0 z-40 w-[88vw] max-w-sm overflow-y-auto bg-transparent p-4 lg:hidden";
@@ -199,9 +216,15 @@ function App() {
         <aside className="hidden lg:block">
           <Sidebar
             activeNav={activeNav}
+            recentQuestions={recentQuestions}
+            savedQueries={savedQueries}
+            suggestedQuestions={suggestedQuestions}
+            apiConfigured={apiConfigured}
             onNavChange={setActiveNav}
             onSuggestedQuestion={handlePromptSelect}
-            onLoadConversation={handleLoadConversation}
+            onRecentQuestionSelect={handlePromptSelect}
+            onSavedQuerySelect={setInput}
+            onNewChat={handleNewChat}
           />
         </aside>
 
@@ -209,24 +232,24 @@ function App() {
           <ChatPanel
             messages={messages}
             input={input}
-            scope={scope}
             isGenerating={isGenerating}
             answerMode={answerMode}
             showCitations={showCitations}
             copiedMessageId={copiedMessageId}
-            currentScenario={currentScenario}
+            latestAssistantMessageId={latestAssistantMessageId}
+            apiConfigured={apiConfigured}
+            apiBaseUrl={apiBaseUrl}
+            handbookPolicies={handbookPolicies}
             onInputChange={setInput}
-            onSubmit={handleSubmit}
-            onScopeChange={setScope}
+            onSubmit={() => void runQuery(input)}
             onPromptSelect={handlePromptSelect}
-            onRegenerate={handleRegenerate}
+            onRegenerate={regenerateLatestAnswer}
             onCopy={handleCopy}
             onViewSource={handleViewSource}
             onAnswerModeChange={setAnswerMode}
             onToggleCitations={() => setShowCitations((value) => !value)}
             onOpenSidebar={() => setSidebarOpen(true)}
-            resolveAnswer={(message) => resolveAnswerVariant(message, answerMode)}
-            resolveScope={resolveScope}
+            onNewChat={handleNewChat}
           />
         </div>
       </div>
@@ -243,56 +266,62 @@ function App() {
           </div>
           <Sidebar
             activeNav={activeNav}
+            recentQuestions={recentQuestions}
+            savedQueries={savedQueries}
+            suggestedQuestions={suggestedQuestions}
+            apiConfigured={apiConfigured}
             onNavChange={setActiveNav}
             onSuggestedQuestion={handlePromptSelect}
-            onLoadConversation={handleLoadConversation}
+            onRecentQuestionSelect={handlePromptSelect}
+            onSavedQuerySelect={setInput}
+            onNewChat={handleNewChat}
           />
         </div>
       </aside>
 
       <Modal
-        open={Boolean(selectedChunk)}
-        onClose={() => setSelectedChunkId(null)}
-        title={getDocumentById(selectedChunk?.documentId ?? "")?.title ?? "Source excerpt"}
-        subtitle={
-          selectedChunk
-            ? `${selectedChunk.sectionLabel} - ${selectedChunk.pageLabel}`
-            : undefined
-        }
+        open={Boolean(selectedSources)}
+        onClose={() => setSelectedSources(null)}
+        title={selectedSources?.title ?? "Handbook Sources"}
+        subtitle={selectedSources?.subtitle}
       >
-        {selectedChunk ? (
-          <div className="space-y-5">
+        {selectedSources?.sources.length ? (
+          <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge tone="primary">{getDocumentById(selectedChunk.documentId)?.category}</Badge>
-              <Badge>{getDocumentById(selectedChunk.documentId)?.type}</Badge>
-              {selectedChunk.keywords.map((keyword) => (
-                <Chip key={keyword}>{keyword}</Chip>
+              <Badge tone="primary">Handbook-only scope</Badge>
+              <Badge tone="success">Live source links</Badge>
+            </div>
+            <div className="space-y-3">
+              {selectedSources.sources.map((source) => (
+                <a
+                  key={source.url}
+                  href={source.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-start justify-between gap-4 rounded-[1.4rem] border border-slate-200/80 bg-white/85 px-4 py-4 transition hover:-translate-y-0.5 hover:border-primary/20 hover:bg-white"
+                >
+                  <div>
+                    <div className="text-sm font-semibold text-slate-800">{source.title}</div>
+                    <div className="mt-1 break-all text-xs leading-6 text-slate-500">{source.url}</div>
+                  </div>
+                  <ExternalLink size={16} className="mt-1 shrink-0 text-primary" />
+                </a>
               ))}
             </div>
-            <div className="rounded-[1.6rem] bg-slate-50 px-5 py-5">
-              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-                <Info size={14} />
-                Full source excerpt
-              </div>
-              <p
-                className="text-sm leading-7 text-slate-700"
-                dangerouslySetInnerHTML={{
-                  __html: highlightText(selectedChunk.fullText, selectedChunk.keywords),
-                }}
-              />
-            </div>
-            {currentScenario?.noResults ? (
-              <div className="rounded-[1.4rem] bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-900/80">
-                This no-results state is included to show how the demo surfaces missing evidence instead of inventing an answer.
-              </div>
-            ) : null}
           </div>
         ) : (
           <div className="rounded-[1.5rem] bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
             <SearchX className="mx-auto mb-3" size={20} />
-            No chunk selected.
+            No handbook source links were returned for this answer.
           </div>
         )}
+        <div className="mt-5 rounded-[1.4rem] bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-900/80">
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-amber-600">
+            <Info size={14} />
+            Source policy
+          </div>
+          Only pages under the official PolyU RPg Handbook scope are accepted for this live QA flow.
+        </div>
       </Modal>
     </div>
   );
