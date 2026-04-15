@@ -3,7 +3,6 @@ import {
   Copy,
   FileStack,
   PanelLeftOpen,
-  PanelRightOpen,
   RefreshCw,
   SendHorizonal,
   Sparkles,
@@ -38,7 +37,6 @@ interface ChatPanelProps {
   onAnswerModeChange: (mode: AnswerMode) => void;
   onToggleCitations: () => void;
   onOpenSidebar: () => void;
-  onOpenEvidence: () => void;
   resolveAnswer: (message: ChatMessage) => AnswerVariant | undefined;
   resolveScope: (message: ChatMessage) => string | undefined;
 }
@@ -62,7 +60,6 @@ export function ChatPanel({
   onAnswerModeChange,
   onToggleCitations,
   onOpenSidebar,
-  onOpenEvidence,
   resolveAnswer,
   resolveScope,
 }: ChatPanelProps) {
@@ -92,7 +89,7 @@ export function ChatPanel({
       <Card className="flex items-center justify-between gap-4 p-5">
         <div>
           <div className="flex items-center gap-2">
-            <Badge tone="primary">Knowledge Base Connected</Badge>
+            <Badge tone="primary">Campus Assistant</Badge>
             <Badge>Mock Data Demo</Badge>
           </div>
           <h2 className="mt-3 font-display text-3xl text-slate-900">Academic support workspace</h2>
@@ -110,15 +107,6 @@ export function ChatPanel({
           >
             <PanelLeftOpen size={18} />
           </Button>
-          <Button
-            variant="secondary"
-            size="icon"
-            onClick={onOpenEvidence}
-            aria-label="Open evidence panel"
-            className="xl:hidden"
-          >
-            <PanelRightOpen size={18} />
-          </Button>
         </div>
       </Card>
 
@@ -128,11 +116,11 @@ export function ChatPanel({
             <div>
               <Badge tone="success">Demo-ready frontend only</Badge>
               <h3 className="mt-4 font-display text-4xl leading-tight text-slate-900">
-                A polished RAG assistant experience for PolyU academic guidance
+                A polished campus assistant experience for PolyU academic guidance
               </h3>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600">
-                This mock interface simulates a retrieval-augmented assistant that answers student questions, surfaces
-                the evidence used, and makes policy uncertainty visible instead of hidden.
+                This mock interface simulates a trustworthy academic assistant that answers student questions with
+                structured summaries, cautions, and source-aware responses for course project demos.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <TogglePill
@@ -191,11 +179,6 @@ export function ChatPanel({
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge tone="primary">Assistant</Badge>
                     {scopeLabel ? <Badge>{scopeLabel}</Badge> : null}
-                    {answer ? (
-                      <Badge tone={answer.reliability === "High" ? "success" : answer.reliability === "Medium" ? "warning" : "neutral"}>
-                        {answer.reliability} reliability
-                      </Badge>
-                    ) : null}
                   </div>
                   <div className="mt-4">
                     <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Summary</div>
@@ -249,13 +232,13 @@ export function ChatPanel({
           {isGenerating ? (
             <div className="flex justify-start">
               <Card muted className="max-w-xl rounded-[1.8rem] px-5 py-4">
-                <div className="flex items-center gap-3">
-                  <LoadingDots />
-                  <div>
-                    <div className="text-sm font-semibold text-slate-700">Generating retrieval-backed answer</div>
-                    <div className="text-sm text-slate-500">Ranking evidence and drafting the response card...</div>
+                  <div className="flex items-center gap-3">
+                    <LoadingDots />
+                    <div>
+                      <div className="text-sm font-semibold text-slate-700">Generating answer</div>
+                      <div className="text-sm text-slate-500">Drafting the response card for this question...</div>
+                    </div>
                   </div>
-                </div>
               </Card>
             </div>
           ) : null}
@@ -278,11 +261,7 @@ export function ChatPanel({
                 onClick={onToggleCitations}
               />
             </div>
-            {currentScenario ? (
-              <Badge tone="primary">Intent: {currentScenario.intent}</Badge>
-            ) : (
-              <Badge>Ready for a new question</Badge>
-            )}
+            <Badge>{currentScenario ? "Answer ready" : "Ready for a new question"}</Badge>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">

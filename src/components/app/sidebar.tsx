@@ -1,40 +1,33 @@
 import {
-  BookOpen,
   Bookmark,
   CircleHelp,
   Cog,
   GraduationCap,
   History,
-  LibraryBig,
   MessageSquareText,
   Sparkles,
   UserRound,
 } from "lucide-react";
 import {
   conversationPresets,
-  documentCategories,
   mockStudent,
   navigationItems,
   savedQueries,
   suggestedQuestions,
 } from "../../data/mockRag";
-import { DocumentCategory, NavItem } from "../../types";
+import { NavItem } from "../../types";
 import { cn } from "../../lib/utils";
 import { Card } from "../ui/card";
-import { Chip } from "../ui/chip";
 
 interface SidebarProps {
   activeNav: NavItem;
   onNavChange: (item: NavItem) => void;
-  selectedCategory: DocumentCategory | "All Categories";
-  onCategoryChange: (category: DocumentCategory | "All Categories") => void;
   onSuggestedQuestion: (question: string) => void;
   onLoadConversation: (conversationId: string) => void;
 }
 
 const navIcons = {
   Chat: MessageSquareText,
-  "Knowledge Base": LibraryBig,
   "Recent Questions": History,
   "Saved Queries": Bookmark,
   Settings: Cog,
@@ -43,8 +36,6 @@ const navIcons = {
 export function Sidebar({
   activeNav,
   onNavChange,
-  selectedCategory,
-  onCategoryChange,
   onSuggestedQuestion,
   onLoadConversation,
 }: SidebarProps) {
@@ -102,24 +93,6 @@ export function Sidebar({
             >
               {question}
             </button>
-          ))}
-        </div>
-      </Card>
-
-      <Card muted className="p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <BookOpen size={16} className="text-primary" />
-          <h2 className="section-title">Document Categories</h2>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {documentCategories.map((category) => (
-            <Chip
-              key={category}
-              active={selectedCategory === category}
-              onClick={() => onCategoryChange(category)}
-            >
-              {category}
-            </Chip>
           ))}
         </div>
       </Card>

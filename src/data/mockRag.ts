@@ -14,17 +14,7 @@ const defaultPipeline = [
   { id: "generate", label: "Answer generated", description: "Structured answer prepared with citations." },
 ] as const;
 
-export const navigationItems = ["Chat", "Knowledge Base", "Recent Questions", "Saved Queries", "Settings"] as const;
-
-export const documentCategories: Array<DocumentCategory | "All Categories"> = [
-  "All Categories",
-  "Academic Regulations",
-  "Programme Handbook",
-  "Course Syllabus",
-  "Graduation Requirements",
-  "Deadlines",
-  "FAQ",
-];
+export const navigationItems = ["Chat", "Recent Questions", "Saved Queries", "Settings"] as const;
 
 export const documents: DocumentRecord[] = [
   {
@@ -521,7 +511,7 @@ export const scenarios: MockQueryScenario[] = [
       detailed: [
         {
           mode: "detailed",
-          summary: "The current demo knowledge base does not contain relevant evidence for exchange housing scholarship policy, so the assistant should avoid fabricating an answer. Instead, it should state that no supporting documents were retrieved and guide the user toward supported academic categories or an administrative office.",
+          summary: "The current demo dataset does not contain relevant evidence for exchange housing scholarship policy, so the assistant should avoid fabricating an answer. Instead, it should state that no supporting documents were retrieved and guide the user toward supported academic categories or an administrative office.",
           bullets: [
             "The indexed mock corpus is limited to academic and teaching-related documents.",
             "No evidence chunks matched the housing or scholarship topic strongly enough to support an answer.",

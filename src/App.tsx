@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Info, SearchX, X } from "lucide-react";
 import { ChatPanel } from "./components/app/chat-panel";
-import { EvidencePanel } from "./components/app/evidence-panel";
 import { Sidebar } from "./components/app/sidebar";
 import { Badge } from "./components/ui/badge";
 import { Button } from "./components/ui/button";
@@ -10,17 +9,15 @@ import { Modal } from "./components/ui/modal";
 import {
   chunks,
   conversationPresets,
-  getChunksForScenario,
   getDocumentById,
   getScenarioById,
   getScenarioForQuestion,
 } from "./data/mockRag";
 import { delay, formatClockTime, highlightText } from "./lib/utils";
-import { AnswerMode, AnswerVariant, ChatMessage, DocumentCategory, NavItem } from "./types";
+import { AnswerMode, AnswerVariant, ChatMessage, NavItem } from "./types";
 
 function App() {
   const [activeNav, setActiveNav] = useState<NavItem>("Chat");
-  const [selectedCategory, setSelectedCategory] = useState<DocumentCategory | "All Categories">("All Categories");
   const [answerMode, setAnswerMode] = useState<AnswerMode>("concise");
   const [showCitations, setShowCitations] = useState(true);
   const [scope, setScope] = useState("All documents");
@@ -28,36 +25,16 @@ function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentScenarioId, setCurrentScenarioId] = useState<string>();
   const [isGenerating, setIsGenerating] = useState(false);
-  const [activePipelineStep, setActivePipelineStep] = useState(0);
   const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [evidenceOpen, setEvidenceOpen] = useState(false);
 
   const currentScenario = useMemo(() => getScenarioById(currentScenarioId), [currentScenarioId]);
-
-  const filteredEvidence = useMemo(() => {
-    const evidence = getChunksForScenario(currentScenario);
-
-    if (selectedCategory === "All Categories") {
-      return evidence;
-    }
-
-    return evidence.filter((chunk) => getDocumentById(chunk.documentId)?.category === selectedCategory);
-  }, [currentScenario, selectedCategory]);
 
   const latestAssistantMessage = useMemo(
     () => [...messages].reverse().find((message) => message.role === "assistant"),
     [messages],
   );
-
-  const currentAnswer = useMemo(() => {
-    if (!latestAssistantMessage) {
-      return undefined;
-    }
-
-    return resolveAnswerVariant(latestAssistantMessage, answerMode);
-  }, [latestAssistantMessage, answerMode]);
 
   const selectedChunk = useMemo(
     () => chunks.find((chunk) => chunk.id === selectedChunkId),
@@ -69,7 +46,6 @@ function App() {
       if (event.key === "Escape") {
         setSelectedChunkId(null);
         setSidebarOpen(false);
-        setEvidenceOpen(false);
       }
     }
 
@@ -108,17 +84,14 @@ function App() {
     };
 
     setSidebarOpen(false);
-    setEvidenceOpen(false);
     setActiveNav("Chat");
     setInput(trimmed);
     setCurrentScenarioId(scenario.id);
     setMessages((currentMessages) => [...currentMessages, userMessage]);
     setIsGenerating(true);
-    setActivePipelineStep(0);
 
     const stepsToAnimate = scenario.noResults ? 2 : scenario.pipeline.length;
     for (let index = 0; index < stepsToAnimate; index += 1) {
-      setActivePipelineStep(index);
       await delay(280);
     }
 
@@ -154,10 +127,8 @@ function App() {
 
     setMessages(preset.messages);
     setCurrentScenarioId(preset.scenarioId);
-    setSelectedCategory("All Categories");
     setActiveNav("Chat");
     setSidebarOpen(false);
-    setEvidenceOpen(false);
   }
 
   function handleRegenerate(messageId: string) {
@@ -221,18 +192,14 @@ function App() {
   }
 
   const sidebarDrawerClasses = "fixed inset-y-0 left-0 z-40 w-[88vw] max-w-sm overflow-y-auto bg-transparent p-4 lg:hidden";
-  const evidenceDrawerClasses =
-    "fixed inset-y-0 right-0 z-40 w-[88vw] max-w-sm overflow-y-auto bg-transparent p-4 xl:hidden";
 
   return (
     <div className="min-h-screen px-4 py-4 lg:px-6 lg:py-6">
-      <div className="mx-auto grid min-h-[calc(100vh-2rem)] max-w-[1800px] gap-4 lg:grid-cols-[300px,minmax(0,1fr)] xl:grid-cols-[300px,minmax(0,1fr),380px]">
+      <div className="mx-auto grid min-h-[calc(100vh-2rem)] max-w-[1440px] gap-4 lg:grid-cols-[300px,minmax(0,1fr)]">
         <aside className="hidden lg:block">
           <Sidebar
             activeNav={activeNav}
             onNavChange={setActiveNav}
-            selectedCategory={selectedCategory}
-            onCategoryChange={setSelectedCategory}
             onSuggestedQuestion={handlePromptSelect}
             onLoadConversation={handleLoadConversation}
           />
@@ -258,22 +225,10 @@ function App() {
             onAnswerModeChange={setAnswerMode}
             onToggleCitations={() => setShowCitations((value) => !value)}
             onOpenSidebar={() => setSidebarOpen(true)}
-            onOpenEvidence={() => setEvidenceOpen(true)}
             resolveAnswer={(message) => resolveAnswerVariant(message, answerMode)}
             resolveScope={resolveScope}
           />
         </div>
-
-        <aside className="hidden xl:block">
-          <EvidencePanel
-            scenario={currentScenario}
-            evidence={filteredEvidence}
-            activeStep={activePipelineStep}
-            isGenerating={isGenerating}
-            onInspectChunk={setSelectedChunkId}
-            answerReliability={currentAnswer?.reliability}
-          />
-        </aside>
       </div>
 
       {sidebarOpen ? (
@@ -289,31 +244,8 @@ function App() {
           <Sidebar
             activeNav={activeNav}
             onNavChange={setActiveNav}
-            selectedCategory={selectedCategory}
-            onCategoryChange={setSelectedCategory}
             onSuggestedQuestion={handlePromptSelect}
             onLoadConversation={handleLoadConversation}
-          />
-        </div>
-      </aside>
-
-      {evidenceOpen ? (
-        <div className="fixed inset-0 z-30 bg-slate-950/30 backdrop-blur-sm xl:hidden" onClick={() => setEvidenceOpen(false)} />
-      ) : null}
-      <aside className={`${evidenceDrawerClasses} ${evidenceOpen ? "translate-x-0" : "translate-x-full"} transition-transform duration-300`}>
-        <div className="h-full">
-          <div className="mb-3 flex justify-end">
-            <Button variant="secondary" size="icon" onClick={() => setEvidenceOpen(false)} aria-label="Close evidence panel">
-              <X size={18} />
-            </Button>
-          </div>
-          <EvidencePanel
-            scenario={currentScenario}
-            evidence={filteredEvidence}
-            activeStep={activePipelineStep}
-            isGenerating={isGenerating}
-            onInspectChunk={setSelectedChunkId}
-            answerReliability={currentAnswer?.reliability}
           />
         </div>
       </aside>

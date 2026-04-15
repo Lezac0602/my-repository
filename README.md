@@ -1,25 +1,23 @@
 # Campus Academic Assistant
 
-A polished frontend-only demo for a university-focused RAG assistant UI built with React, TypeScript, Tailwind CSS, and mock data.
+A polished frontend-only demo for a university-focused academic assistant UI built with React, TypeScript, Tailwind CSS, and mock data.
 
 Important:
-This project is a frontend demo only. It does not include a backend, database, or real RAG pipeline. All answers, sources, and retrieval states are simulated with local mock data. The product experience demonstrated in the UI is for the "PolyU Campus Academic Assistant," while the repository itself uses the more generic "Campus" naming.
+This project is a frontend demo only. It does not include a backend, database, or real backend retrieval service. All answers and assistant states are simulated with local mock data. The product experience demonstrated in the UI is for the "PolyU Campus Academic Assistant," while the repository itself uses the more generic "Campus" naming.
 
 ## What This Demo Includes
 
-- A three-panel academic assistant dashboard
-- Left sidebar with navigation, suggested questions, categories, and mock student profile
+- A polished academic assistant dashboard
+- Left sidebar with navigation, suggested questions, recent conversations, saved queries, and mock student profile
 - Main chat interface with structured assistant answers
-- Right evidence panel showing retrieved chunks, relevance, and pipeline status
 - Mock conversations and realistic academic-policy content
 - Interactive demo behaviors such as:
   - suggested question click-to-run
-  - category-based evidence filtering
   - concise/detailed answer toggle
   - show/hide citations toggle
   - regenerate answer
   - copy answer
-  - inspect source modal
+  - source excerpt modal
   - no-results state
 
 ## Requirements
@@ -86,6 +84,38 @@ npm run preview
 ```
 
 Then open the preview URL shown in the terminal.
+
+## How To Publish The Latest Version To GitHub Pages
+
+This repository is already configured so that every push to `main` automatically rebuilds and redeploys the website to GitHub Pages.
+
+Public site:
+
+```text
+https://lezac0602.github.io/my-repository/
+```
+
+If you want to build, commit, push, and trigger the live site update in one command, run:
+
+```powershell
+npm run publish:github
+```
+
+You can also provide a custom commit message:
+
+```powershell
+npm run publish:github --message="Update campus assistant layout"
+```
+
+What this script does:
+
+- runs `npm run build`
+- stages your local changes
+- creates a git commit if there are file changes
+- pushes to `origin/main`
+- lets GitHub Actions redeploy the Pages site automatically
+
+After the push, GitHub usually updates the site within about 1 to 2 minutes.
 
 ## Project Structure
 

@@ -1,4 +1,4 @@
-export type NavItem = "Chat" | "Knowledge Base" | "Recent Questions" | "Saved Queries" | "Settings";
+export type NavItem = "Chat" | "Recent Questions" | "Saved Queries" | "Settings";
 
 export type DocumentCategory =
   | "Academic Regulations"
