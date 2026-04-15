@@ -7,7 +7,6 @@ import { Button } from "./components/ui/button";
 import { Modal } from "./components/ui/modal";
 import {
   handbookPolicies,
-  handbookRootUrl,
   savedQueries as defaultSavedQueries,
   suggestedQuestions,
 } from "./data/mockRag";
@@ -18,7 +17,7 @@ import { AnswerMode, ChatMessage, HandbookApiResponse, HandbookChatTurn, NavItem
 function App() {
   const recentStorageKey = "campus-live-recent-questions";
   const savedStorageKey = "campus-live-saved-queries";
-  const [activeNav, setActiveNav] = useState<NavItem>("Chat");
+  const [activeNav, setActiveNav] = useState<NavItem>("Home");
   const [answerMode, setAnswerMode] = useState<AnswerMode>("concise");
   const [showCitations, setShowCitations] = useState(true);
   const [input, setInput] = useState("");
@@ -304,8 +303,7 @@ function App() {
     );
 
     setSelectedSources({
-      title: "Handbook Sources",
-      subtitle: handbookRootUrl,
+      title: "Sources",
       sources: uniqueSources,
     });
   }
@@ -438,13 +436,12 @@ function App() {
       <Modal
         open={Boolean(selectedSources)}
         onClose={() => setSelectedSources(null)}
-        title={selectedSources?.title ?? "Handbook Sources"}
+        title={selectedSources?.title ?? "Sources"}
         subtitle={selectedSources?.subtitle}
       >
         {selectedSources?.sources.length ? (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge tone="primary">Handbook-only scope</Badge>
               <Badge tone="success">Live source links</Badge>
             </div>
             <div className="space-y-3">
@@ -474,9 +471,9 @@ function App() {
         <div className="mt-5 rounded-[1.4rem] bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-900/80">
           <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-amber-600">
             <Info size={14} />
-            Source policy
+            Reference notes
           </div>
-          Only pages under the official PolyU RPg Handbook scope are accepted for this live QA flow.
+          These links open the official pages used to support the current answer.
         </div>
       </Modal>
     </div>

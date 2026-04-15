@@ -2,6 +2,7 @@ import { FormEvent, KeyboardEvent, ReactNode, useEffect, useRef } from "react";
 import {
   BookmarkPlus,
   Copy,
+  ExternalLink,
   FileStack,
   LoaderCircle,
   PanelLeftOpen,
@@ -12,7 +13,7 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
-import { exampleChips, handbookRootUrl, quickActions } from "../../data/mockRag";
+import { exampleChips, quickActions } from "../../data/mockRag";
 import { AnswerMode, ChatMessage, NavItem, RecentConversation } from "../../types";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -101,6 +102,38 @@ export function ChatPanel({
       event.preventDefault();
       onSubmit();
     }
+  }
+
+  function sanitizeCitationText(text: string) {
+    return text
+      .replace(/\s*\(\[[^\]]+\]\((https?:\/\/[^\s)]+)\)\)/gi, "")
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/gi, "$1")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+  }
+
+  function renderCitationMarkers(message: ChatMessage) {
+    const citations = message.response?.citations ?? [];
+    if (!showCitations || !citations.length) {
+      return null;
+    }
+
+    return (
+      <span className="ml-1 inline-flex flex-wrap items-center gap-1 align-middle">
+        {citations.map((citation, index) => (
+          <button
+            key={`${message.id}-${citation.url}`}
+            type="button"
+            title={`${citation.title}\n${citation.url}`}
+            onClick={() => window.open(citation.url, "_blank", "noopener,noreferrer")}
+            className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500 transition hover:border-primary/20 hover:bg-white hover:text-primary"
+            aria-label={`Open citation ${index + 1}: ${citation.title}`}
+          >
+            [{index + 1}]
+          </button>
+        ))}
+      </span>
+    );
   }
 
   function renderLibraryView(
@@ -197,10 +230,6 @@ export function ChatPanel({
               <div className="font-semibold text-slate-800">API base</div>
               <div className="mt-1 break-all">{apiConfigured ? apiBaseUrl : "No API base configured"}</div>
             </div>
-            <div className="mt-4 text-sm text-slate-600">
-              <div className="font-semibold text-slate-800">Handbook scope</div>
-              <div className="mt-1 break-all">{handbookRootUrl}</div>
-            </div>
           </Card>
           <Card muted className="p-4">
             <div className="text-sm font-semibold text-slate-800">Client-side features</div>
@@ -244,7 +273,7 @@ export function ChatPanel({
           </div>
           <h2 className="mt-3 font-display text-3xl text-slate-900">RPg handbook search workspace</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Ask questions about the PolyU Graduate School RPg Handbook and get handbook-only answers with clickable sources.
+            Ask questions about PolyU RPg campus life and get grounded answers with clean source references.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -266,10 +295,10 @@ export function ChatPanel({
 
       <Card className="flex min-h-0 flex-1 flex-col p-0">
         <div ref={scrollRef} className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5 lg:px-6">
-          {!messages.length ? (
+          {activeNav === "Home" ? (
             <div className="grid gap-6 bg-gradient-to-br from-white via-[#fff7f4] to-[#f3efec] px-1 py-1 lg:grid-cols-[1.2fr,0.8fr]">
               <div className="px-5 py-6">
-                <Badge tone="success">Handbook-only web search</Badge>
+                <Badge tone="success">Live handbook assistant</Badge>
                 <h3 className="mt-4 font-display text-4xl leading-tight text-slate-900">
                   Ask live questions against the PolyU RPg Handbook
                 </h3>
@@ -328,7 +357,16 @@ export function ChatPanel({
             </div>
           ) : null}
 
-          {messages.map((message) => {
+          {activeNav === "Chat" && !messages.length ? (
+            <div className="flex min-h-[240px] items-center justify-center rounded-[2rem] border border-dashed border-slate-200 bg-slate-50/70 px-6 text-center">
+              <p className="max-w-2xl font-display text-3xl leading-tight text-slate-700">
+                Ask anything you want about PolyU Rpg Campus Life!
+              </p>
+            </div>
+          ) : null}
+
+          {activeNav === "Chat"
+            ? messages.map((message) => {
             const response = message.response;
             const canRegenerate = message.id === latestAssistantMessageId;
 
@@ -355,7 +393,8 @@ export function ChatPanel({
                   <div className="mt-4">
                     <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Summary</div>
                     <p className="mt-2 text-sm leading-7 text-slate-700">
-                      {response?.answer || response?.message || message.content}
+                      {sanitizeCitationText(response?.answer || response?.message || message.content)}
+                      {renderCitationMarkers(message)}
                     </p>
                   </div>
                   <div className="mt-5">
@@ -366,7 +405,7 @@ export function ChatPanel({
                         : ["No handbook-supported bullet points were returned for this answer."]).map((bullet) => (
                         <li key={bullet} className="flex gap-3 text-sm leading-7 text-slate-700">
                           <span className="mt-2 h-2 w-2 rounded-full bg-primary" />
-                          <span>{bullet}</span>
+                          <span>{sanitizeCitationText(bullet)}</span>
                         </li>
                       ))}
                     </ul>
@@ -374,23 +413,27 @@ export function ChatPanel({
                   <div className="mt-5 rounded-[1.4rem] bg-amber-50 px-4 py-4">
                     <div className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-600">Caution</div>
                     <p className="mt-2 text-sm leading-6 text-amber-900/80">
-                      {response?.caution || "Always verify the final wording on the official handbook page before relying on this answer."}
+                      {sanitizeCitationText(
+                        response?.caution || "Always verify the final wording on the official handbook page before relying on this answer.",
+                      )}
                     </p>
                   </div>
                   {showCitations && response?.citations.length ? (
                     <div className="mt-5">
-                      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Cited sources</div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {response.citations.map((citation) => (
-                          <a
+                      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Sources</div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {response.citations.map((citation, index) => (
+                          <button
                             key={citation.url}
-                            href={citation.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-primary/20 hover:bg-white hover:text-primary"
+                            type="button"
+                            title={`${citation.title}\n${citation.url}`}
+                            onClick={() => window.open(citation.url, "_blank", "noopener,noreferrer")}
+                            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-primary/20 hover:bg-white hover:text-primary"
                           >
-                            {citation.title}
-                          </a>
+                            <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">[{index + 1}]</span>
+                            <span>{citation.title}</span>
+                            <ExternalLink size={12} />
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -418,9 +461,10 @@ export function ChatPanel({
                 </Card>
               </div>
             );
-          })}
+              })
+            : null}
 
-          {isGenerating ? (
+          {activeNav === "Chat" && isGenerating ? (
             <div className="flex justify-start">
               <Card muted className="max-w-xl rounded-[1.8rem] px-5 py-4">
                 <div className="flex items-center gap-3">
@@ -433,7 +477,7 @@ export function ChatPanel({
                       <LoadingDots />
                     </div>
                     <div className="text-sm text-slate-500">
-                      Querying the live RPg handbook scope and drafting a structured response...
+                      Searching live handbook pages and drafting a structured response...
                     </div>
                   </div>
                 </div>
@@ -473,17 +517,12 @@ export function ChatPanel({
               aria-label="Handbook question input"
             />
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm">
-                  Source scope: {handbookRootUrl}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {exampleChips.map((chip) => (
-                    <Chip key={chip} onClick={() => onPromptSelect(chip)}>
-                      {chip}
-                    </Chip>
-                  ))}
-                </div>
+              <div className="flex flex-wrap gap-2">
+                {exampleChips.map((chip) => (
+                  <Chip key={chip} onClick={() => onPromptSelect(chip)}>
+                    {chip}
+                  </Chip>
+                ))}
               </div>
               <div className="flex flex-wrap justify-end gap-2">
                 <Button

@@ -4,6 +4,7 @@ import {
   Cog,
   GraduationCap,
   History,
+  House,
   MessageSquareText,
   Plus,
   Sparkles,
@@ -11,7 +12,7 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
-import { handbookRootUrl, mockStudent, navigationItems } from "../../data/mockRag";
+import { mockStudent, navigationItems } from "../../data/mockRag";
 import { NavItem, RecentConversation } from "../../types";
 import { cn } from "../../lib/utils";
 import { Badge } from "../ui/badge";
@@ -32,6 +33,7 @@ interface SidebarProps {
 }
 
 const navIcons = {
+  Home: House,
   Chat: MessageSquareText,
   "Recent Questions": History,
   "Saved Queries": Bookmark,
@@ -79,7 +81,7 @@ export function Sidebar({
               </>
             )}
           </Badge>
-          <Badge tone="primary">Handbook-only scope</Badge>
+          <Badge tone="primary">Live campus assistant</Badge>
         </div>
 
         <Button className="mt-5 w-full" onClick={onNewChat}>
@@ -204,8 +206,7 @@ export function Sidebar({
           </div>
         </div>
         <div className="mt-4 rounded-2xl bg-white/80 px-4 py-3 text-xs leading-6 text-slate-500">
-          Handbook scope:
-          <div className="mt-1 break-all font-medium text-slate-700">{handbookRootUrl}</div>
+          Live answers are grounded in official handbook pages, and recent threads stay saved in this browser for quick return visits.
         </div>
       </Card>
     </div>

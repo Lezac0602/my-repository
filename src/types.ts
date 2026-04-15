@@ -1,4 +1,4 @@
-export type NavItem = "Chat" | "Recent Questions" | "Saved Queries" | "Settings";
+export type NavItem = "Home" | "Chat" | "Recent Questions" | "Saved Queries" | "Settings";
 
 export type AnswerMode = "concise" | "detailed";
 

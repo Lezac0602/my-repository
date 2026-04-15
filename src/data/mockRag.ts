@@ -1,6 +1,6 @@
 import { MockStudent, QuickAction } from "../types";
 
-export const navigationItems = ["Chat", "Recent Questions", "Saved Queries", "Settings"] as const;
+export const navigationItems = ["Home", "Chat", "Recent Questions", "Saved Queries", "Settings"] as const;
 
 export const handbookRootUrl = "https://www.polyu.edu.hk/gs/rpghandbook/";
 
