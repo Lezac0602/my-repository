@@ -265,6 +265,58 @@ function createNoSourceResponse() {
   };
 }
 
+function buildGeneralFallbackInstruction(mode) {
+  const depthLine =
+    mode === "detailed"
+      ? "Give a fuller answer with 4 to 6 concise bullets."
+      : "Keep the answer concise with 3 to 4 concise bullets.";
+
+  return [
+    "You are a helpful university assistant.",
+    "The RPg handbook search did not find a valid handbook source for the user's question.",
+    "First acknowledge that no matching handbook-backed result was found.",
+    "Then provide a plain general answer based on your own knowledge, without claiming it comes from the handbook.",
+    "Make it clear that the second part is a general answer rather than a handbook-cited answer.",
+    depthLine,
+    "Return plain text using exactly these sections and nothing else:",
+    "SUMMARY:",
+    "<one paragraph>",
+    "KEY DETAILS:",
+    "- bullet",
+    "- bullet",
+    "CAUTION:",
+    "<one paragraph>",
+  ].join("\n");
+}
+
+async function fetchGeneralFallbackResponse({ question, history, mode, model }) {
+  const response = await openai.responses.create({
+    model,
+    reasoning: { effort: "low" },
+    input: [
+      {
+        role: "system",
+        content: buildGeneralFallbackInstruction(mode),
+      },
+      ...buildInput(question, history),
+    ],
+  });
+
+  const parsed = parseStructuredAnswer(response.output_text);
+
+  return {
+    answer: parsed.answer,
+    bullets: parsed.bullets,
+    caution: parsed.caution,
+    citations: [],
+    sourcePages: [],
+    previousResponseId: undefined,
+    status: "no_handbook_source",
+    message: "No valid handbook source could be verified.",
+    model,
+  };
+}
+
 async function fetchHandbookResponse({ question, history, mode, model, previousResponseId, strictRetry }) {
   const response = await openai.responses.create({
     model,
@@ -383,7 +435,14 @@ export default async function handler(req, res) {
     }
 
     if (!response.sourcePages.length) {
-      sendJson(res, 200, createNoSourceResponse());
+      const generalFallback = await fetchGeneralFallbackResponse({
+        question: validated.question,
+        history: validated.history,
+        mode: validated.mode,
+        model: validated.model,
+      }).catch(() => null);
+
+      sendJson(res, 200, generalFallback || createNoSourceResponse());
       return;
     }
 

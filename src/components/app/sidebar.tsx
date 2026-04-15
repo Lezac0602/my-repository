@@ -20,7 +20,6 @@ interface SidebarProps {
   recentConversations: RecentConversation[];
   savedQueries: string[];
   suggestedQuestions: string[];
-  apiConfigured: boolean;
   languageMode: LanguageMode;
   onNavChange: (item: NavItem) => void;
   onSuggestedQuestion: (question: string) => void;

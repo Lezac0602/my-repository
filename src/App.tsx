@@ -460,7 +460,6 @@ function App() {
             recentConversations={recentConversations}
             savedQueries={savedQueries}
             suggestedQuestions={suggestedQuestions}
-            apiConfigured={apiConfigured}
             languageMode={languageMode}
             onNavChange={setActiveNav}
             onSuggestedQuestion={handlePromptSelect}
@@ -527,7 +526,6 @@ function App() {
             recentConversations={recentConversations}
             savedQueries={savedQueries}
             suggestedQuestions={suggestedQuestions}
-            apiConfigured={apiConfigured}
             languageMode={languageMode}
             onNavChange={setActiveNav}
             onSuggestedQuestion={handlePromptSelect}

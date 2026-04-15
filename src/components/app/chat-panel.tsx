@@ -72,7 +72,7 @@ const labels = {
     noSaved: "No saved queries yet. Use 'Save Query' under the chat input to keep one here.",
     openThread: "Open Thread",
     askAgain: "Ask Again",
-    loadQuery: "Load Query",
+    loadQuery: "Open Thread",
     askNow: "Ask Now",
     delete: "Delete",
     settings: "Settings",
@@ -139,7 +139,7 @@ const labels = {
     noSaved: "还没有保存的问题。可以在聊天输入框下方点击“保存问题”。",
     openThread: "打开对话",
     askAgain: "再次提问",
-    loadQuery: "载入问题",
+    loadQuery: "打开对话",
     askNow: "立即提问",
     delete: "删除",
     settings: "设置",
@@ -628,7 +628,8 @@ export function ChatPanel({
           ) : null}
         </div>
 
-        <div className="sticky bottom-0 z-10 border-t border-slate-200/70 bg-white/95 px-5 py-5 backdrop-blur lg:px-6">
+        {activeNav === "Chat" ? (
+          <div className="sticky bottom-0 z-10 border-t border-slate-200/70 bg-white/95 px-5 py-5 backdrop-blur lg:px-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3">
               <SegmentedControl
@@ -700,7 +701,8 @@ export function ChatPanel({
               </div>
             </div>
           </form>
-        </div>
+          </div>
+        ) : null}
       </Card>
     </div>
   );
