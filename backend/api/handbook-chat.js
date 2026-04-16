@@ -107,6 +107,7 @@ function buildInstruction(mode, strictRetry) {
 
   return [
     "You are a handbook QA assistant for The Hong Kong Polytechnic University.",
+    "Reply in the same language as the user's question.",
     `Only answer using information supported by the PolyU Graduate School Research Postgraduate Handbook pages under this URL prefix: ${handbookPrefix}`,
     "Treat any other page, even on polyu.edu.hk, as invalid for final answer support.",
     retryLine,
@@ -265,7 +266,7 @@ function createNoSourceResponse() {
   };
 }
 
-function buildGeneralFallbackInstruction(mode) {
+function buildGeneralFallbackInstruction(mode, withWebSearch) {
   const depthLine =
     mode === "detailed"
       ? "Give a fuller answer with 4 to 6 concise bullets."
@@ -274,9 +275,12 @@ function buildGeneralFallbackInstruction(mode) {
   return [
     "You are a helpful university assistant.",
     "The RPg handbook search did not find a valid handbook source for the user's question.",
-    "First acknowledge that no matching handbook-backed result was found.",
-    "Then provide a plain general answer based on your own knowledge, without claiming it comes from the handbook.",
-    "Make it clear that the second part is a general answer rather than a handbook-cited answer.",
+    "Reply in the same language as the user's question.",
+    "First explicitly acknowledge that no matching handbook-backed result was found.",
+    withWebSearch
+      ? "Then answer using broader web results when helpful. You may use webpages outside the handbook scope."
+      : "Then provide a plain general answer based on your own knowledge, without claiming it comes from the handbook.",
+    "Make it clear that the second part is a fallback answer rather than a handbook-cited answer.",
     depthLine,
     "Return plain text using exactly these sections and nothing else:",
     "SUMMARY:",
@@ -289,27 +293,35 @@ function buildGeneralFallbackInstruction(mode) {
   ].join("\n");
 }
 
-async function fetchGeneralFallbackResponse({ question, history, mode, model }) {
+async function fetchGeneralFallbackResponse({ question, history, mode, model, withWebSearch }) {
   const response = await openai.responses.create({
     model,
     reasoning: { effort: "low" },
+    ...(withWebSearch
+      ? {
+          tools: [{ type: "web_search" }],
+          tool_choice: "auto",
+          include: ["web_search_call.action.sources"],
+        }
+      : {}),
     input: [
       {
         role: "system",
-        content: buildGeneralFallbackInstruction(mode),
+        content: buildGeneralFallbackInstruction(mode, withWebSearch),
       },
       ...buildInput(question, history),
     ],
   });
 
   const parsed = parseStructuredAnswer(response.output_text);
+  const links = withWebSearch ? uniqueLinks(collectLinksDeep(response.output, [])).slice(0, 6) : [];
 
   return {
     answer: parsed.answer,
     bullets: parsed.bullets,
     caution: parsed.caution,
-    citations: [],
-    sourcePages: [],
+    citations: links,
+    sourcePages: links,
     previousResponseId: undefined,
     status: "no_handbook_source",
     message: "No valid handbook source could be verified.",
@@ -435,12 +447,21 @@ export default async function handler(req, res) {
     }
 
     if (!response.sourcePages.length) {
-      const generalFallback = await fetchGeneralFallbackResponse({
-        question: validated.question,
-        history: validated.history,
-        mode: validated.mode,
-        model: validated.model,
-      }).catch(() => null);
+      const generalFallback =
+        (await fetchGeneralFallbackResponse({
+          question: validated.question,
+          history: validated.history,
+          mode: validated.mode,
+          model: validated.model,
+          withWebSearch: true,
+        }).catch(() => null)) ||
+        (await fetchGeneralFallbackResponse({
+          question: validated.question,
+          history: validated.history,
+          mode: validated.mode,
+          model: validated.model,
+          withWebSearch: false,
+        }).catch(() => null));
 
       sendJson(res, 200, generalFallback || createNoSourceResponse());
       return;
